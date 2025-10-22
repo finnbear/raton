@@ -4,6 +4,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Instruction {
     LoadConst(Value),
     LoadVar(u8),
