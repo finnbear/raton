@@ -8,7 +8,7 @@ use thiserror::Error;
 
 pub type HostFunction = Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
 
-/// Executes bytecode.
+/// Interprets bytecode.
 pub struct Vm {
     functions: HashMap<String, Vec<Instruction>>,
     host_functions: HashMap<String, HostFunction>,
@@ -137,9 +137,18 @@ impl Vm {
         let mut stack: Vec<Value> = Vec::new();
         let mut variables = args;
         let mut pc = 0u32;
+        let mut instruction_budget = self.instruction_budget;
+        let mut stack_budget = self.max_stack_depth;
 
         if let Some(instructions) = self.functions.get(func_name) {
             while pc < instructions.len() as u32 {
+                if let Some(instruction_budget) = &mut instruction_budget {
+                    if let Some(next) = instruction_budget.checked_sub(1) {
+                        *instruction_budget = next;
+                    } else {
+                        return Err(RuntimeError::InstructionBudgetExceeded);
+                    }
+                }
                 match &instructions[pc as usize] {
                     Instruction::LoadConst(val) => {
                         stack.push(val.clone());

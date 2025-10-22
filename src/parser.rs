@@ -1,16 +1,42 @@
 use crate::Value;
 use crate::ast::*;
+use chumsky::cache::Cache;
+use chumsky::cache::Cached;
 use chumsky::error::RichReason;
 use chumsky::prelude::{Parser as ChumskyParser, *};
 use std::fmt::{self, Debug, Display, Write};
+use std::marker::PhantomData;
 use std::ops::Range;
+use std::sync::LazyLock;
 use thiserror::Error;
 
-pub struct Parser<'src> {
-    inner: Boxed<'src, 'src, &'src str, Program, extra::Err<Rich<'src, char>>>,
+#[non_exhaustive]
+pub struct Parser {
+    _hidden: PhantomData<()>,
 }
 
-impl<'src> Debug for Parser<'src> {
+/// Avoid memory leak in parsers that use `Recursive` by only creating it once.
+static CACHE: LazyLock<TrustMeBro<Cache<ParserCache>>> =
+    LazyLock::new(|| TrustMeBro(Cache::new(ParserCache)));
+
+struct TrustMeBro<T>(T);
+
+/// SAFETY: the `Rc` inside parser is never cloned or droped.
+unsafe impl<T> Sync for TrustMeBro<T> {}
+/// SAFETY: the `Rc` inside parser is never cloned or droped.
+unsafe impl<T> Send for TrustMeBro<T> {}
+
+struct ParserCache;
+
+impl Cached for ParserCache {
+    type Parser<'src> = Boxed<'src, 'src, &'src str, Program, extra::Err<Rich<'src, char>>>;
+
+    fn make_parser<'src>(self) -> Self::Parser<'src> {
+        parser().boxed()
+    }
+}
+
+impl Debug for Parser {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Parser").finish_non_exhaustive()
     }
@@ -48,15 +74,15 @@ impl Display for ParseErrorReason {
     }
 }
 
-impl<'src> Parser<'src> {
+impl Parser {
     pub fn new() -> Self {
         Self {
-            inner: parser().boxed(),
+            _hidden: PhantomData,
         }
     }
 
-    pub fn parse(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
-        let result = self.inner.parse(src);
+    pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
+        let result = CACHE.0.get().parse(src);
         result.into_result().map_err(|e| {
             e.into_iter()
                 .map(|e| ParseError {
@@ -76,7 +102,8 @@ impl<'src> Parser<'src> {
     }
 }
 
-fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<Rich<'src, char>>> {
+type E<'src> = Rich<'src, char>;
+fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<E<'src>>> {
     let ident = text::ident().padded().boxed();
 
     /*
@@ -94,12 +121,23 @@ fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<Ric
         just("true").to(Value::Bool(true)),
         just("false").to(Value::Bool(false)),
         text::int(10)
-            .map(|s: &str| Value::I32(s.parse().unwrap()))
+            .try_map(|s: &str, span| {
+                Ok(Value::I32(
+                    s.parse()
+                        .map_err(|_| E::custom(span, "overflowing literal"))?,
+                ))
+            })
             .labelled("integer"),
         text::int(10)
             .then_ignore(just('.'))
             .then(text::digits(10).collect::<String>())
-            .map(|(i, d)| Value::F32(format!("{i}.{d}").parse().unwrap()))
+            .try_map(|(i, d): (&str, String), span| {
+                Ok(Value::F32(
+                    format!("{i}.{d}")
+                        .parse()
+                        .map_err(|_| E::custom(span, "invalid literal"))?,
+                ))
+            })
             .labelled("float"),
         just('"')
             .ignore_then(any().filter(|c| *c != '"').repeated().collect::<String>())
