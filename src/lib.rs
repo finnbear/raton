@@ -24,8 +24,8 @@ mod tests {
         "#;
 
         let ast = parser().parse(source).unwrap();
-        let mut vm = Vm::new();
-        vm.load_program(&ast);
+        let mut vm = Vm::new().with_type_casting();
+        vm.load_program(&ast).unwrap();
 
         let result = vm.execute("hello", vec![Value::I32(5)]).unwrap();
         assert_eq!(result, Value::F32(5.0));
@@ -41,7 +41,7 @@ mod tests {
 
         let ast = parser().parse(source).unwrap();
         let mut vm = Vm::new();
-        vm.load_program(&ast);
+        vm.load_program(&ast).unwrap();
 
         let result = vm
             .execute("add", vec![Value::I32(5), Value::I32(3)])
@@ -63,7 +63,7 @@ mod tests {
 
         let ast = parser().parse(source).unwrap();
         let mut vm = Vm::new();
-        vm.load_program(&ast);
+        vm.load_program(&ast).unwrap();
 
         let result = vm
             .execute("max", vec![Value::I32(10), Value::I32(5)])
@@ -87,7 +87,7 @@ mod tests {
 
         let ast = parser().parse(source).unwrap();
         let mut vm = Vm::new();
-        vm.load_program(&ast);
+        vm.load_program(&ast).unwrap();
 
         let result = vm.execute("sum_to_n", vec![Value::I32(5)]).unwrap();
         assert_eq!(result, Value::I32(15));
