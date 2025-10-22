@@ -17,11 +17,11 @@ pub enum Instruction {
     /// Push the result of the binary operation on two values popped from the stack.
     BinaryOp(BinaryOp),
     /// Jump to the indexed instruction.
-    Jump(usize),
+    Jump(u32),
     /// Jump to the indexed instruction if a value peeked from the stack is the bool 'false'.
-    JumpIfFalse(usize),
+    JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
-    Call(String, usize),
+    Call(String, u8),
     /// Return from the current function.
     Return,
     /// Discard an item popped from the stack.

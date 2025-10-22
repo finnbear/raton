@@ -40,6 +40,8 @@ Unfinished, do not use in production.
 
 ## Other features
 
+- [x] Portable to any platform, 32 bits or higher, supported by Rust
+- [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling
 - [ ] Proper error messages

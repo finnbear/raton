@@ -136,11 +136,11 @@ impl Vm {
     pub fn execute(&self, func_name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
         let mut stack: Vec<Value> = Vec::new();
         let mut variables = args;
-        let mut pc = 0;
+        let mut pc = 0u32;
 
         if let Some(instructions) = self.functions.get(func_name) {
-            while pc < instructions.len() {
-                match &instructions[pc] {
+            while pc < instructions.len() as u32 {
+                match &instructions[pc as usize] {
                     Instruction::LoadConst(val) => {
                         stack.push(val.clone());
                         pc += 1;

@@ -6,11 +6,14 @@ pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
     /// (start, breaks, continues)
-    loop_stack: Vec<(usize, Vec<usize>, Vec<usize>)>,
+    loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
+    max_instructions: u32,
 }
 
 #[derive(Debug, Error)]
 pub enum CompileError {
+    #[error("max instructions exceeded")]
+    MaxInstructionsExceeded,
     #[error("internal compiler error")]
     Internal,
 }
@@ -21,21 +24,30 @@ impl BytecodeGenerator {
             instructions: Vec::new(),
             variable_stack: Vec::new(),
             loop_stack: Vec::new(),
+            max_instructions: u32::MAX - 1,
         }
     }
 
-    fn emit(&mut self, inst: Instruction) -> Result<usize, CompileError> {
-        let addr = self.instructions.len();
+    pub fn with_max_instructions(mut self, max: u32) -> Self {
+        self.max_instructions = max.min(u32::MAX - 1);
+        self
+    }
+
+    fn emit(&mut self, inst: Instruction) -> Result<u32, CompileError> {
+        let addr = self.instructions.len() as u32;
+        if addr >= self.max_instructions {
+            return Err(CompileError::MaxInstructionsExceeded);
+        }
         self.instructions.push(inst);
         Ok(addr)
     }
 
-    fn current_addr(&self) -> usize {
-        self.instructions.len()
+    fn current_addr(&self) -> u32 {
+        self.instructions.len() as u32
     }
 
-    fn patch_jump(&mut self, addr: usize, target: usize) -> Result<(), CompileError> {
-        match &mut self.instructions[addr] {
+    fn patch_jump(&mut self, addr: u32, target: u32) -> Result<(), CompileError> {
+        match &mut self.instructions[addr as usize] {
             Instruction::Jump(t) | Instruction::JumpIfFalse(t) => {
                 *t = target;
                 Ok(())
@@ -103,7 +115,7 @@ impl BytecodeGenerator {
                 for arg in args {
                     self.generate_expr(arg)?;
                 }
-                self.emit(Instruction::Call(name.clone(), args.len()))?;
+                self.emit(Instruction::Call(name.clone(), args.len() as u8))?;
             }
             Expr::If {
                 cond,
