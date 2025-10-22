@@ -27,7 +27,7 @@ Unfinished, do not use in production.
 - [x] Bytecode generator
 - [x] Bytecode VM
 - [ ] Optimizer
-- [ ] Standard library
+- [ ] Modular standard library
 
 ## Types
 - [x] `()`
