@@ -85,7 +85,7 @@ fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<Ric
             just("i32").to(Type::I32),
             just("f32").to(Type::F32),
             just("string").to(Type::String),
-            just("()").to(Type::Unit),
+            just("null").to(Type::Unit),
         ))
         .padded().boxed();
     */
@@ -106,7 +106,7 @@ fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<Ric
             .then_ignore(just('"'))
             .map(Value::String)
             .labelled("string"),
-        just("()").to(Value::Unit),
+        just("null").to(Value::Null),
     ))
     .padded()
     .boxed();

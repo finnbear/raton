@@ -65,7 +65,7 @@ impl BytecodeGenerator {
         if let Some(value) = &block.value {
             self.generate_expr(value)?;
         } else {
-            self.emit(Instruction::LoadConst(Value::Unit))?;
+            self.emit(Instruction::LoadConst(Value::Null))?;
         }
         Ok(())
     }
@@ -135,7 +135,7 @@ impl BytecodeGenerator {
                 if let Some(else_stmts) = else_branch {
                     self.generate_block(else_stmts)?;
                 } else {
-                    self.emit(Instruction::LoadConst(Value::Unit))?;
+                    self.emit(Instruction::LoadConst(Value::Null))?;
                 }
 
                 let end_addr = self.current_addr();
@@ -214,7 +214,7 @@ impl BytecodeGenerator {
                 if let Some(expr) = expr {
                     self.generate_expr(expr)?;
                 } else {
-                    self.emit(Instruction::LoadConst(Value::Unit))?;
+                    self.emit(Instruction::LoadConst(Value::Null))?;
                 }
                 self.emit(Instruction::Return)?;
             }
@@ -236,7 +236,7 @@ impl BytecodeGenerator {
             generator.generate_stmt(stmt)?;
         }
         if !matches!(generator.instructions.last(), Some(Instruction::Return)) {
-            generator.emit(Instruction::LoadConst(Value::Unit))?;
+            generator.emit(Instruction::LoadConst(Value::Null))?;
             generator.emit(Instruction::Return)?;
         }
         Ok(generator.instructions)

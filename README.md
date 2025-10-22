@@ -30,7 +30,7 @@ Unfinished, do not use in production.
 - [ ] Modular standard library
 
 ## Types
-- [x] `()`
+- [x] `null`
 - [x] `bool`
 - [x] `i32`
 - [x] `f32`

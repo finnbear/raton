@@ -75,7 +75,7 @@ impl Vm {
                     Value::I32(i) => Ok(Value::Bool(*i != 0)),
                     Value::F32(f) => Ok(Value::Bool(*f != 0.0)),
                     Value::String(s) => Ok(Value::Bool(!s.is_empty())),
-                    Value::Unit => Ok(Value::Bool(false)),
+                    Value::Null => Ok(Value::Bool(false)),
                 }
             }),
         )
@@ -89,7 +89,7 @@ impl Vm {
                     Value::I32(i) => Ok(Value::I32(*i)),
                     Value::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
                     Value::F32(f) => Ok(Value::I32(*f as i32)),
-                    Value::String(s) => Ok(s.parse::<i32>().map(Value::I32).unwrap_or(Value::Unit)),
+                    Value::String(s) => Ok(s.parse::<i32>().map(Value::I32).unwrap_or(Value::Null)),
                     _ => Err(RuntimeError::InvalidArgument),
                 }
             }),
@@ -104,7 +104,7 @@ impl Vm {
                     Value::F32(f) => Ok(Value::F32(*f)),
                     Value::I32(i) => Ok(Value::F32(*i as f32)),
                     Value::Bool(b) => Ok(Value::F32(if *b { 1.0 } else { 0.0 })),
-                    Value::String(s) => Ok(s.parse::<f32>().map(Value::F32).unwrap_or(Value::Unit)),
+                    Value::String(s) => Ok(s.parse::<f32>().map(Value::F32).unwrap_or(Value::Null)),
                     _ => Err(RuntimeError::InvalidArgument),
                 }
             }),
@@ -155,7 +155,7 @@ impl Vm {
                     &Instruction::StoreVar(index) => {
                         let val = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                         while variables.len() < index as usize + 1 {
-                            variables.push(Value::Unit);
+                            variables.push(Value::Null);
                         }
                         *variables
                             .get_mut(index as usize)
@@ -349,7 +349,7 @@ impl Vm {
                 }
             }
 
-            Ok(Value::Unit)
+            Ok(Value::Null)
         } else {
             Err(RuntimeError::UndefinedFunction {
                 name: func_name.to_owned(),

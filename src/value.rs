@@ -5,7 +5,7 @@ use crate::RuntimeError;
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Type {
-    Unit,
+    Null,
     Bool,
     I32,
     F32,
@@ -15,7 +15,7 @@ pub enum Type {
 impl Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::Unit => "()",
+            Self::Null => "null",
             Self::Bool => "bool",
             Self::I32 => "i32",
             Self::F32 => "f32",
@@ -27,7 +27,7 @@ impl Display for Type {
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Value {
-    Unit,
+    Null,
     Bool(bool),
     I32(i32),
     F32(f32),
@@ -37,7 +37,7 @@ pub enum Value {
 impl Value {
     pub fn type_of(&self) -> Type {
         match self {
-            Value::Unit => Type::Unit,
+            Value::Null => Type::Null,
             Value::Bool(_) => Type::Bool,
             Value::I32(_) => Type::I32,
             Value::F32(_) => Type::F32,
@@ -81,7 +81,7 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Value::Unit => write!(f, "()"),
+            Value::Null => write!(f, "()"),
             Value::Bool(b) => write!(f, "{}", b),
             Value::I32(i) => write!(f, "{}", i),
             Value::F32(fl) => write!(f, "{}", fl),
