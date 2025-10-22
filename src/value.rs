@@ -1,4 +1,6 @@
-use std::fmt;
+use std::fmt::{self, Display};
+
+use crate::RuntimeError;
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
@@ -8,6 +10,18 @@ pub enum Type {
     I32,
     F32,
     String,
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Unit => "()",
+            Self::Bool => "bool",
+            Self::I32 => "i32",
+            Self::F32 => "f32",
+            Self::String => "string",
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,26 +45,35 @@ impl Value {
         }
     }
 
-    pub fn as_bool(&self) -> Result<bool, String> {
+    pub fn as_bool(&self) -> Result<bool, RuntimeError> {
         match self {
             Value::Bool(b) => Ok(*b),
-            _ => Err(format!("Expected bool, got {:?}", self.type_of())),
+            _ => Err(RuntimeError::TypeMismatch {
+                expected: Type::Bool,
+                actual: self.type_of(),
+            }),
         }
     }
 
     #[allow(unused)]
-    fn as_i32(&self) -> Result<i32, String> {
+    fn as_i32(&self) -> Result<i32, RuntimeError> {
         match self {
             Value::I32(i) => Ok(*i),
-            _ => Err(format!("Expected i32, got {:?}", self.type_of())),
+            _ => Err(RuntimeError::TypeMismatch {
+                expected: Type::I32,
+                actual: self.type_of(),
+            }),
         }
     }
 
     #[allow(unused)]
-    fn as_f32(&self) -> Result<f32, String> {
+    fn as_f32(&self) -> Result<f32, RuntimeError> {
         match self {
             Value::F32(f) => Ok(*f),
-            _ => Err(format!("Expected f32, got {:?}", self.type_of())),
+            _ => Err(RuntimeError::TypeMismatch {
+                expected: Type::F32,
+                actual: self.type_of(),
+            }),
         }
     }
 }

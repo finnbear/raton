@@ -3,25 +3,44 @@ use crate::Value;
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum UnaryOp {
+    /// !
     Not,
+    /// -
     Neg,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum BinaryOp {
+    /// +
     Add,
+    /// -
     Sub,
+    /// *
     Mul,
+    /// /
     Div,
+    /// %
     Mod,
+    /// ==
     Eq,
+    /// !=
     Ne,
+    /// <
     Lt,
+    /// <=
     Le,
+    /// >
     Gt,
+    /// >=
     Ge,
+    /// &&
+    ///
+    /// This is short-circuiting.
     And,
+    /// ||
+    ///
+    /// This is short-circuiting.
     Or,
 }
 
