@@ -11,8 +11,6 @@ pub use bytecode_vm::*;
 
 #[cfg(test)]
 mod tests {
-    use chumsky::Parser;
-
     use super::*;
 
     #[test]
@@ -23,7 +21,7 @@ mod tests {
             }
         "#;
 
-        let ast = parser().parse(source).unwrap();
+        let ast = Parser::new().parse(source).unwrap();
         let mut vm = Vm::new().with_type_casting();
         vm.load_program(&ast).unwrap();
 
@@ -39,7 +37,7 @@ mod tests {
             }
         "#;
 
-        let ast = parser().parse(source).unwrap();
+        let ast = Parser::new().parse(source).unwrap();
         let mut vm = Vm::new();
         vm.load_program(&ast).unwrap();
 
@@ -61,7 +59,7 @@ mod tests {
             }
         "#;
 
-        let ast = parser().parse(source).unwrap();
+        let ast = Parser::new().parse(source).unwrap();
         let mut vm = Vm::new();
         vm.load_program(&ast).unwrap();
 
@@ -85,7 +83,7 @@ mod tests {
             }
         "#;
 
-        let ast = parser().parse(source).unwrap();
+        let ast = Parser::new().parse(source).unwrap();
         let mut vm = Vm::new();
         vm.load_program(&ast).unwrap();
 

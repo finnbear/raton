@@ -1,6 +1,5 @@
-use thiserror::Error;
-
 use crate::{Value, ast::*, bytecode::*};
+use thiserror::Error;
 
 pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,

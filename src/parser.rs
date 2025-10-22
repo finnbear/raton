@@ -1,8 +1,82 @@
 use crate::Value;
 use crate::ast::*;
-use chumsky::prelude::*;
+use chumsky::error::RichReason;
+use chumsky::prelude::{Parser as ChumskyParser, *};
+use std::fmt::{self, Debug, Display, Write};
+use std::ops::Range;
+use thiserror::Error;
 
-pub fn parser<'src>() -> impl Parser<'src, &'src str, Program, extra::Err<Rich<'src, char>>> {
+pub struct Parser<'src> {
+    inner: Boxed<'src, 'src, &'src str, Program, extra::Err<Rich<'src, char>>>,
+}
+
+impl<'src> Debug for Parser<'src> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Parser").finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, Debug, Error)]
+#[error("parse error from {} to {}: {reason}", span.start, span.end)]
+pub struct ParseError {
+    pub span: Range<usize>,
+    pub reason: ParseErrorReason,
+}
+
+#[derive(Clone, Debug)]
+pub enum ParseErrorReason {
+    Unexpected {
+        expected: Vec<String>,
+        found: Option<char>,
+    },
+    Other(String),
+}
+
+impl Display for ParseErrorReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unexpected { expected, found } => {
+                write!(f, "expected one of [{expected:?}], found ")?;
+                if let Some(found) = found {
+                    f.write_char(*found)
+                } else {
+                    f.write_str("none")
+                }
+            }
+            Self::Other(other) => f.write_str(other),
+        }
+    }
+}
+
+impl<'src> Parser<'src> {
+    pub fn new() -> Self {
+        Self {
+            inner: parser().boxed(),
+        }
+    }
+
+    pub fn parse(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
+        let result = self.inner.parse(src);
+        result.into_result().map_err(|e| {
+            e.into_iter()
+                .map(|e| ParseError {
+                    span: e.span().start..e.span().end,
+                    reason: match e.into_reason() {
+                        RichReason::ExpectedFound { expected, found } => {
+                            ParseErrorReason::Unexpected {
+                                expected: expected.into_iter().map(|e| e.to_string()).collect(),
+                                found: found.map(|f| f.into_inner()),
+                            }
+                        }
+                        RichReason::Custom(custom) => ParseErrorReason::Other(custom),
+                    },
+                })
+                .collect()
+        })
+    }
+}
+
+fn parser<'src>() -> impl ChumskyParser<'src, &'src str, Program, extra::Err<Rich<'src, char>>> {
     let ident = text::ident().padded().boxed();
 
     /*
