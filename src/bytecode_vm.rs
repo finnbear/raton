@@ -138,7 +138,7 @@ impl Vm {
         let mut variables = args;
         let mut pc = 0u32;
         let mut instruction_budget = self.instruction_budget;
-        let mut stack_budget = self.max_stack_depth;
+        // let mut stack_budget = self.max_stack_depth;
 
         if let Some(instructions) = self.functions.get(func_name) {
             while pc < instructions.len() as u32 {

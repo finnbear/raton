@@ -8,6 +8,7 @@ use std::fmt::{self, Debug, Display, Write};
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::LazyLock;
+use std::sync::Mutex;
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -17,14 +18,14 @@ pub struct Parser {
 
 /// Avoid memory leak in parsers that use `Recursive` by only creating it once.
 static CACHE: LazyLock<TrustMeBro<Cache<ParserCache>>> =
-    LazyLock::new(|| TrustMeBro(Cache::new(ParserCache)));
+    LazyLock::new(|| TrustMeBro(Mutex::new(Cache::new(ParserCache))));
 
-struct TrustMeBro<T>(T);
+struct TrustMeBro<T>(Mutex<T>);
 
-/// SAFETY: the `Rc` inside parser is never cloned or droped.
-unsafe impl<T> Sync for TrustMeBro<T> {}
-/// SAFETY: the `Rc` inside parser is never cloned or droped.
+/// SAFETY: the `Rc` inside parser is only cloned when a `Mutex` is locked.`
 unsafe impl<T> Send for TrustMeBro<T> {}
+/// SAFETY: the `Rc` inside parser is only cloned when a `Mutex` is locked.`
+unsafe impl<T> Sync for TrustMeBro<T> {}
 
 struct ParserCache;
 
@@ -82,7 +83,7 @@ impl Parser {
     }
 
     pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
-        let result = CACHE.0.get().parse(src);
+        let result = CACHE.0.lock().unwrap().get().parse(src);
         result.into_result().map_err(|e| {
             e.into_iter()
                 .map(|e| ParseError {

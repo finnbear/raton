@@ -24,6 +24,12 @@ jobs:
         with:
           toolchain: nightly
           override: true
-          components: rustfmt, clippy
+          components: rustfmt, clippy, miri
       - name: Test
-        run: cargo test
+        run: cargo test --all-features
+      - name: Test (all-features)
+        run: cargo test --all-features
+      - name: Setup Miri
+        run: cargo miri setup
+      - name: Test (miri all-features)
+        run: cargo miri test --all-features

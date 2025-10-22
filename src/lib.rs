@@ -90,4 +90,35 @@ mod tests {
         let result = vm.execute("sum_to_n", vec![Value::I32(5)]).unwrap();
         assert_eq!(result, Value::I32(15));
     }
+
+    #[test]
+    fn test_threading() {
+        let source = r#"
+            fn sum_to_n(n) {
+                let i = 0;
+                let sum = 0;
+                while (i < n) {
+                    i = i + 1;
+                    sum = sum + i;
+                }
+                return sum;
+            }
+        "#;
+
+        let mut threads = Vec::new();
+        for _ in 0..5 {
+            threads.push(std::thread::spawn(move || {
+                let ast = Parser::new().parse(source).unwrap();
+                let mut vm = Vm::new();
+                vm.load_program(&ast).unwrap();
+
+                let result = vm.execute("sum_to_n", vec![Value::I32(5)]).unwrap();
+                assert_eq!(result, Value::I32(15));
+            }));
+        }
+
+        for thread in threads {
+            thread.join().unwrap();
+        }
+    }
 }
