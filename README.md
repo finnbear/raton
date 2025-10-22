@@ -22,19 +22,28 @@ fn sum_to_n(n) {
 
 Unfinished, do not use in production.
 
-## Features
-
-### Components
+## Components
 - [x] Parser
 - [x] Bytecode generator
 - [x] Bytecode VM
+- [ ] Optimizer
+- [ ] Standard library
 
-### Types
+## Types
 - [x] `()`
 - [x] `bool`
 - [x] `i32`
 - [x] `f32`
 - [x] `string`
+- [ ] Host value
+- [ ] Host reference
+
+## Other features
+
+- [ ] Denial of service prevention
+- [ ] Proper error handling
+- [ ] Proper error messages
+- [ ] Fuzzing
 
 ## License
 
