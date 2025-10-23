@@ -1,5 +1,7 @@
 # Ratón 🐁
 
+[![Documentation](https://docs.rs/raton/badge.svg)](https://docs.rs/raton)
+[![crates.io](https://img.shields.io/crates/v/raton.svg)](https://crates.io/crates/raton)
 [![Build](https://github.com/finnbear/raton/actions/workflows/build.yml/badge.svg)](https://github.com/finnbear/raton/actions/workflows/build.yml) 
 
 A tiny, highly modular, embeddable, dynamically typed scripting language with a bytecode VM, intended for use in games.
