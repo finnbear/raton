@@ -30,7 +30,7 @@ Unfinished, do not use in production.
 ## Components
 - [x] Parser
 - [x] Bytecode generator
-- [x] Bytecode linker
+- [ ] Bytecode linker
 - [x] Bytecode VM
 - [ ] Optimizer
 - [ ] Modular standard library
