@@ -6,6 +6,7 @@ use test::Bencher;
 // test benches::fib_28             ... bench: 149,497,373.70 ns/iter (+/- 9,979,934.13)
 // test benches::million_iterations ... bench:  44,039,739.20 ns/iter (+/- 10,533,766.51)
 
+#[allow(unused)]
 fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
     let mut vm = Vm::new().with_type_casting();
@@ -18,6 +19,7 @@ fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expec
 }
 
 #[bench]
+#[cfg(all(feature = "while_loop", feature = "i32_type"))]
 fn million_iterations(b: &mut Bencher) {
     let src = r#"
         fn million() {
@@ -32,6 +34,7 @@ fn million_iterations(b: &mut Bencher) {
 }
 
 #[bench]
+#[cfg(all(feature = "if_expression", feature = "i32_type"))]
 fn fib_28(b: &mut test::Bencher) {
     let src = r#"
         fn fib(n) {

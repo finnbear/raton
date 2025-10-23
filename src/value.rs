@@ -1,14 +1,18 @@
-use std::fmt::{self, Display};
-
+#[allow(unused_imports)]
 use crate::RuntimeError;
+use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum Type {
     Null,
+    #[cfg(feature = "bool_type")]
     Bool,
+    #[cfg(feature = "i32_type")]
     I32,
+    #[cfg(feature = "f32_type")]
     F32,
+    #[cfg(feature = "string_type")]
     String,
 }
 
@@ -16,9 +20,13 @@ impl Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Null => "null",
+            #[cfg(feature = "bool_type")]
             Self::Bool => "bool",
+            #[cfg(feature = "i32_type")]
             Self::I32 => "i32",
+            #[cfg(feature = "f32_type")]
             Self::F32 => "f32",
+            #[cfg(feature = "string_type")]
             Self::String => "string",
         })
     }
@@ -28,9 +36,13 @@ impl Display for Type {
 #[non_exhaustive]
 pub enum Value {
     Null,
+    #[cfg(feature = "bool_type")]
     Bool(bool),
+    #[cfg(feature = "i32_type")]
     I32(i32),
+    #[cfg(feature = "f32_type")]
     F32(f32),
+    #[cfg(feature = "string_type")]
     String(String),
 }
 
@@ -38,40 +50,23 @@ impl Value {
     pub fn type_of(&self) -> Type {
         match self {
             Value::Null => Type::Null,
+            #[cfg(feature = "bool_type")]
             Value::Bool(_) => Type::Bool,
+            #[cfg(feature = "i32_type")]
             Value::I32(_) => Type::I32,
+            #[cfg(feature = "f32_type")]
             Value::F32(_) => Type::F32,
+            #[cfg(feature = "string_type")]
             Value::String(_) => Type::String,
         }
     }
 
+    #[cfg(feature = "bool_type")]
     pub fn as_bool(&self) -> Result<bool, RuntimeError> {
         match self {
             Value::Bool(b) => Ok(*b),
             _ => Err(RuntimeError::TypeMismatch {
                 expected: Type::Bool,
-                actual: self.type_of(),
-            }),
-        }
-    }
-
-    #[allow(unused)]
-    fn as_i32(&self) -> Result<i32, RuntimeError> {
-        match self {
-            Value::I32(i) => Ok(*i),
-            _ => Err(RuntimeError::TypeMismatch {
-                expected: Type::I32,
-                actual: self.type_of(),
-            }),
-        }
-    }
-
-    #[allow(unused)]
-    fn as_f32(&self) -> Result<f32, RuntimeError> {
-        match self {
-            Value::F32(f) => Ok(*f),
-            _ => Err(RuntimeError::TypeMismatch {
-                expected: Type::F32,
                 actual: self.type_of(),
             }),
         }
@@ -82,9 +77,13 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Value::Null => write!(f, "()"),
+            #[cfg(feature = "bool_type")]
             Value::Bool(b) => write!(f, "{}", b),
+            #[cfg(feature = "i32_type")]
             Value::I32(i) => write!(f, "{}", i),
+            #[cfg(feature = "f32_type")]
             Value::F32(fl) => write!(f, "{}", fl),
+            #[cfg(feature = "string_type")]
             Value::String(s) => write!(f, "{}", s),
         }
     }

@@ -1,5 +1,6 @@
 use crate::Value;
 use crate::ast::*;
+#[allow(unused_imports)]
 use nom::{
     IResult, Parser as NomParser,
     branch::alt,
@@ -166,13 +167,18 @@ fn identifier(i: &str) -> IResult<&str, String> {
     .parse(i)?;
     let (i, _) = blank(i)?;
 
-    // Check for keywords
-    match ident {
-        "let" | "if" | "else" | "while" | "break" | "continue" | "return" | "fn" | "true"
-        | "false" | "null" => Err(nom::Err::Error(nom::error::Error::new(
+    let err = || {
+        Err(nom::Err::Error(nom::error::Error::new(
             i,
             nom::error::ErrorKind::Tag,
-        ))),
+        )))
+    };
+
+    // Check for keywords
+    match ident {
+        "let" | "if" | "else" | "while" | "break" | "continue" | "return" | "fn" | "null" => err(),
+        #[cfg(feature = "bool_type")]
+        "true" | "false" => err(),
         _ => Ok((i, ident.to_owned())),
     }
 }
@@ -181,6 +187,7 @@ fn parse_null(i: &str) -> IResult<&str, Value> {
     value(Value::Null, ws(keyword("null"))).parse(i)
 }
 
+#[cfg(feature = "bool_type")]
 fn parse_bool(i: &str) -> IResult<&str, Value> {
     alt((
         value(Value::Bool(true), ws(keyword("true"))),
@@ -189,6 +196,7 @@ fn parse_bool(i: &str) -> IResult<&str, Value> {
     .parse(i)
 }
 
+#[cfg(feature = "f32_type")]
 fn parse_f32(i: &str) -> IResult<&str, Value> {
     let (i, _) = blank(i)?;
     let (i, num_str) = recognize((opt(char('-')), digit1, char('.'), digit1)).parse(i)?;
@@ -203,6 +211,7 @@ fn parse_f32(i: &str) -> IResult<&str, Value> {
     }
 }
 
+#[cfg(feature = "i32_type")]
 fn parse_i32(i: &str) -> IResult<&str, Value> {
     let (i, _) = blank(i)?;
     let (i, num_str) = recognize(pair(opt(char('-')), digit1)).parse(i)?;
@@ -217,6 +226,7 @@ fn parse_i32(i: &str) -> IResult<&str, Value> {
     }
 }
 
+#[cfg(feature = "string_type")]
 fn parse_string(i: &str) -> IResult<&str, Value> {
     let (i, _) = blank.parse(i)?;
     let (i, _) = char('"').parse(i)?;
@@ -228,7 +238,18 @@ fn parse_string(i: &str) -> IResult<&str, Value> {
 }
 
 fn parse_literal(i: &str) -> IResult<&str, Value> {
-    alt((parse_null, parse_bool, parse_f32, parse_i32, parse_string)).parse(i)
+    alt((
+        parse_null,
+        #[cfg(feature = "bool_type")]
+        parse_bool,
+        #[cfg(feature = "f32_type")]
+        parse_f32,
+        #[cfg(feature = "i32_type")]
+        parse_i32,
+        #[cfg(feature = "string_type")]
+        parse_string,
+    ))
+    .parse(i)
 }
 
 // Postfix operators for precedence parser
@@ -289,6 +310,7 @@ fn parse_block(i: &str) -> IResult<&str, Block> {
 }
 
 // If expression parser
+#[cfg(feature = "if_expression")]
 fn parse_if(i: &str) -> IResult<&str, Expr> {
     let (i, _) = ws(keyword("if")).parse(i)?;
     let (i, cond) = cut(expression).parse(i)?;
@@ -305,6 +327,7 @@ fn parse_if(i: &str) -> IResult<&str, Expr> {
 fn primary_expr(i: &str) -> IResult<&str, Expr> {
     alt((
         map(parse_literal, Expr::Literal),
+        #[cfg(feature = "if_expression")]
         parse_if,
         map(parse_block, Expr::Block),
         map(identifier, Expr::Variable),
@@ -320,6 +343,7 @@ fn expression(i: &str) -> IResult<&str, Expr> {
     precedence(
         // Prefix operators
         alt((
+            #[cfg(feature = "bool_type")]
             unary_op(2, value(UnaryOp::Not, ws(tag("!")))),
             unary_op(2, value(UnaryOp::Neg, ws(tag("-")))),
         )),
@@ -347,6 +371,7 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 )),
             ),
             // Level 5: Comparison
+            #[cfg(feature = "bool_type")]
             binary_op(
                 5,
                 Assoc::Left,
@@ -358,6 +383,7 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 )),
             ),
             // Level 6: Equality
+            #[cfg(feature = "bool_type")]
             binary_op(
                 6,
                 Assoc::Left,
@@ -367,8 +393,10 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 )),
             ),
             // Level 7: Logical AND
+            #[cfg(feature = "bool_type")]
             binary_op(7, Assoc::Left, value(BinaryOp::And, ws(tag("&&")))),
             // Level 8: Logical OR
+            #[cfg(feature = "bool_type")]
             binary_op(8, Assoc::Left, value(BinaryOp::Or, ws(tag("||")))),
         )),
         primary_expr,
@@ -403,6 +431,7 @@ fn parse_assign(i: &str) -> IResult<&str, Stmt> {
     Ok((i, Stmt::Assign(name, expr)))
 }
 
+#[cfg(feature = "while_loop")]
 fn parse_while(i: &str) -> IResult<&str, Stmt> {
     let (i, _) = ws(keyword("while")).parse(i)?;
     let (i, cond) = cut(expression).parse(i)?;
@@ -412,12 +441,14 @@ fn parse_while(i: &str) -> IResult<&str, Stmt> {
     Ok((i, Stmt::While { cond, body }))
 }
 
+#[cfg(feature = "while_loop")]
 fn parse_break(i: &str) -> IResult<&str, Stmt> {
     let (i, _) = ws(keyword("break")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
     Ok((i, Stmt::Break))
 }
 
+#[cfg(feature = "while_loop")]
 fn parse_continue(i: &str) -> IResult<&str, Stmt> {
     let (i, _) = ws(keyword("continue")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
@@ -431,19 +462,24 @@ fn parse_return(i: &str) -> IResult<&str, Stmt> {
     Ok((i, Stmt::Return(expr)))
 }
 
+#[cfg(feature = "while_loop")]
 fn parse_expr_stmt(i: &str) -> IResult<&str, Stmt> {
     let (i, expr) = expression.parse(i)?;
     let (i, _) = ws(char(';')).parse(i)?;
     Ok((i, Stmt::Expr(expr)))
 }
 
+#[cfg(feature = "while_loop")]
 fn parse_stmt(i: &str) -> IResult<&str, Stmt> {
     let _guard = depth_limiter::dive(i)?;
 
     alt((
         parse_let,
+        #[cfg(feature = "while_loop")]
         parse_while,
+        #[cfg(feature = "while_loop")]
         parse_break,
+        #[cfg(feature = "while_loop")]
         parse_continue,
         parse_return,
         parse_assign,
@@ -474,8 +510,11 @@ fn parse_stmt_or_expr(i: &str) -> IResult<&str, StmtOrExpr> {
 
     let (i, stmt) = alt((
         parse_let,
+        #[cfg(feature = "while_loop")]
         parse_while,
+        #[cfg(feature = "while_loop")]
         parse_break,
+        #[cfg(feature = "while_loop")]
         parse_continue,
         parse_return,
         parse_assign,

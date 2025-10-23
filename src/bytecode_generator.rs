@@ -5,16 +5,10 @@ pub struct BytecodeGenerator {
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
     /// (start, breaks, continues)
+    #[cfg(feature = "while_loop")]
     loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
     max_instructions: u32,
 }
-
-/*
-#[derive(Clone, Debug)]
-pub struct ProgramBytecode {
-    functions: HashMap<String, FunctionBytecode>,
-}
-*/
 
 #[derive(Clone, Debug)]
 pub struct FunctionBytecode {
@@ -34,6 +28,7 @@ impl BytecodeGenerator {
         Self {
             instructions: Vec::new(),
             variable_stack: Vec::new(),
+            #[cfg(feature = "while_loop")]
             loop_stack: Vec::new(),
             max_instructions: u32::MAX - 1,
         }
@@ -53,13 +48,20 @@ impl BytecodeGenerator {
         Ok(addr)
     }
 
+    #[allow(unused)]
     fn current_addr(&self) -> u32 {
         self.instructions.len() as u32
     }
 
+    #[allow(unused)]
     fn patch_jump(&mut self, addr: u32, target: u32) -> Result<(), CompileError> {
         match &mut self.instructions[addr as usize] {
-            Instruction::Jump(t) | Instruction::JumpIfFalse(t) => {
+            Instruction::Jump(t) => {
+                *t = target;
+                Ok(())
+            }
+            #[cfg(feature = "bool_type")]
+            Instruction::JumpIfFalse(t) => {
                 *t = target;
                 Ok(())
             }
@@ -98,6 +100,7 @@ impl BytecodeGenerator {
                 self.generate_expr(operand)?;
                 self.emit(Instruction::UnaryOp(op.clone()))?;
             }
+            #[cfg(feature = "bool_type")]
             Expr::Binary(BinaryOp::And, left, right) => {
                 self.generate_expr(left)?;
                 let jump_addr = self.emit(Instruction::JumpIfFalse(0))?;
@@ -106,6 +109,7 @@ impl BytecodeGenerator {
                 let end_addr = self.current_addr();
                 self.patch_jump(jump_addr, end_addr)?;
             }
+            #[cfg(feature = "bool_type")]
             Expr::Binary(BinaryOp::Or, left, right) => {
                 self.generate_expr(left)?;
                 let jump_addr = self.emit(Instruction::JumpIfFalse(0))?;
@@ -128,6 +132,7 @@ impl BytecodeGenerator {
                 }
                 self.emit(Instruction::Call(name.clone(), args.len() as u8))?;
             }
+            #[cfg(feature = "if_expression")]
             Expr::If {
                 cond,
                 then_branch,
@@ -184,6 +189,7 @@ impl BytecodeGenerator {
                 self.generate_expr(expr)?;
                 self.emit(Instruction::Pop)?;
             }
+            #[cfg(feature = "while_loop")]
             Stmt::While { cond, body } => {
                 let loop_start = self.current_addr();
                 self.loop_stack.push((loop_start, Vec::new(), Vec::new()));
@@ -210,12 +216,14 @@ impl BytecodeGenerator {
                     self.patch_jump(continue_addr, loop_start)?;
                 }
             }
+            #[cfg(feature = "while_loop")]
             Stmt::Break => {
                 let addr = self.emit(Instruction::Jump(0))?;
                 if let Some((_, breaks, _)) = self.loop_stack.last_mut() {
                     breaks.push(addr);
                 }
             }
+            #[cfg(feature = "while_loop")]
             Stmt::Continue => {
                 let addr = self.emit(Instruction::Jump(0))?;
                 if let Some((_, _, continues)) = self.loop_stack.last_mut() {

@@ -4,6 +4,7 @@ use crate::Value;
 #[non_exhaustive]
 pub enum UnaryOp {
     /// !
+    #[cfg(feature = "bool_type")]
     Not,
     /// -
     Neg,
@@ -23,24 +24,32 @@ pub enum BinaryOp {
     /// %
     Mod,
     /// ==
+    #[cfg(feature = "bool_type")]
     Eq,
     /// !=
+    #[cfg(feature = "bool_type")]
     Ne,
     /// <
+    #[cfg(feature = "bool_type")]
     Lt,
     /// <=
+    #[cfg(feature = "bool_type")]
     Le,
     /// >
+    #[cfg(feature = "bool_type")]
     Gt,
     /// >=
+    #[cfg(feature = "bool_type")]
     Ge,
     /// &&
     ///
     /// This is short-circuiting.
+    #[cfg(feature = "bool_type")]
     And,
     /// ||
     ///
     /// This is short-circuiting.
+    #[cfg(feature = "bool_type")]
     Or,
 }
 
@@ -64,6 +73,7 @@ pub enum Expr {
     Call(String, Vec<Expr>),
     /// if cond { block }
     /// if cond { block } else { block }
+    #[cfg(feature = "if_expression")]
     If {
         cond: Box<Expr>,
         then_branch: Block,
@@ -91,10 +101,13 @@ pub enum Stmt {
     /// expr;
     Expr(Expr),
     /// while cond { stmt1; stmt2; }
+    #[cfg(feature = "while_loop")]
     While { cond: Expr, body: Vec<Stmt> },
     /// break;
+    #[cfg(feature = "while_loop")]
     Break,
     /// continue;
+    #[cfg(feature = "while_loop")]
     Continue,
     /// return;
     /// return value;

@@ -19,6 +19,7 @@ pub enum Instruction {
     /// Jump to the indexed instruction.
     Jump(u32),
     /// Jump to the indexed instruction if a value peeked from the stack is the bool 'false'.
+    #[cfg(feature = "bool_type")]
     JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
     Call(String, u8),

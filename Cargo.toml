@@ -5,6 +5,18 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
+[features]
+default = [
+    "bool_type", "i32_type", "f32_type", "string_type",
+    "if_expression", "while_loop"
+]
+bool_type = []
+i32_type = []
+f32_type = []
+string_type = []
+if_expression = ["bool_type"]
+while_loop = ["bool_type"]
+
 [dependencies]
 nom = "8.0.0"
 nom-language = "0.1.0"

@@ -63,61 +63,89 @@ impl Vm {
     }
 
     /// Registers a function for all types, except unit, to cast a value to that type.
-    pub fn with_type_casting(self) -> Self {
-        self.with_host_function(
-            "bool",
-            Box::new(|args| {
-                if args.len() != 1 {
-                    return Err(RuntimeError::InvalidArgument);
-                }
-                match &args[0] {
-                    Value::Bool(b) => Ok(Value::Bool(*b)),
-                    Value::I32(i) => Ok(Value::Bool(*i != 0)),
-                    Value::F32(f) => Ok(Value::Bool(*f != 0.0)),
-                    Value::String(s) => Ok(Value::Bool(!s.is_empty())),
-                    Value::Null => Ok(Value::Bool(false)),
-                }
-            }),
-        )
-        .with_host_function(
-            "i32",
-            Box::new(|args| {
-                if args.len() != 1 {
-                    return Err(RuntimeError::InvalidArgument);
-                }
-                match &args[0] {
-                    Value::I32(i) => Ok(Value::I32(*i)),
-                    Value::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
-                    Value::F32(f) => Ok(Value::I32(*f as i32)),
-                    Value::String(s) => Ok(s.parse::<i32>().map(Value::I32).unwrap_or(Value::Null)),
-                    _ => Err(RuntimeError::InvalidArgument),
-                }
-            }),
-        )
-        .with_host_function(
-            "f32",
-            Box::new(|args| {
-                if args.len() != 1 {
-                    return Err(RuntimeError::InvalidArgument);
-                }
-                match &args[0] {
-                    Value::F32(f) => Ok(Value::F32(*f)),
-                    Value::I32(i) => Ok(Value::F32(*i as f32)),
-                    Value::Bool(b) => Ok(Value::F32(if *b { 1.0 } else { 0.0 })),
-                    Value::String(s) => Ok(s.parse::<f32>().map(Value::F32).unwrap_or(Value::Null)),
-                    _ => Err(RuntimeError::InvalidArgument),
-                }
-            }),
-        )
-        .with_host_function(
-            "string",
-            Box::new(|args| {
-                if args.len() != 1 {
-                    return Err(RuntimeError::InvalidArgument);
-                }
-                Ok(Value::String(args[0].to_string()))
-            }),
-        )
+    pub fn with_type_casting(#[allow(unused_mut)] mut self) -> Self {
+        #[cfg(feature = "bool_type")]
+        {
+            self = self.with_host_function(
+                "bool",
+                Box::new(|args| {
+                    if args.len() != 1 {
+                        return Err(RuntimeError::InvalidArgument);
+                    }
+                    match &args[0] {
+                        Value::Bool(b) => Ok(Value::Bool(*b)),
+                        #[cfg(feature = "i32_type")]
+                        Value::I32(i) => Ok(Value::Bool(*i != 0)),
+                        #[cfg(feature = "f32_type")]
+                        Value::F32(f) => Ok(Value::Bool(*f != 0.0)),
+                        #[cfg(feature = "string_type")]
+                        Value::String(s) => Ok(Value::Bool(!s.is_empty())),
+                        Value::Null => Ok(Value::Bool(false)),
+                    }
+                }),
+            );
+        }
+        #[cfg(feature = "i32_type")]
+        {
+            self = self.with_host_function(
+                "i32",
+                Box::new(|args| {
+                    if args.len() != 1 {
+                        return Err(RuntimeError::InvalidArgument);
+                    }
+                    match &args[0] {
+                        Value::I32(i) => Ok(Value::I32(*i)),
+                        #[cfg(feature = "bool_type")]
+                        Value::Bool(b) => Ok(Value::I32(if *b { 1 } else { 0 })),
+                        #[cfg(feature = "f32_type")]
+                        Value::F32(f) => Ok(Value::I32(*f as i32)),
+                        #[cfg(feature = "string_type")]
+                        Value::String(s) => {
+                            Ok(s.parse::<i32>().map(Value::I32).unwrap_or(Value::Null))
+                        }
+                        _ => Err(RuntimeError::InvalidArgument),
+                    }
+                }),
+            );
+        }
+        #[cfg(feature = "f32_type")]
+        {
+            self = self.with_host_function(
+                "f32",
+                Box::new(|args| {
+                    if args.len() != 1 {
+                        return Err(RuntimeError::InvalidArgument);
+                    }
+                    match &args[0] {
+                        Value::F32(f) => Ok(Value::F32(*f)),
+                        #[cfg(feature = "i32_type")]
+                        Value::I32(i) => Ok(Value::F32(*i as f32)),
+                        #[cfg(feature = "bool_type")]
+                        Value::Bool(b) => Ok(Value::F32(if *b { 1.0 } else { 0.0 })),
+                        #[cfg(feature = "string_type")]
+                        Value::String(s) => {
+                            Ok(s.parse::<f32>().map(Value::F32).unwrap_or(Value::Null))
+                        }
+                        _ => Err(RuntimeError::InvalidArgument),
+                    }
+                }),
+            );
+        }
+
+        #[cfg(feature = "string_type")]
+        {
+            self = self.with_host_function(
+                "string",
+                Box::new(|args| {
+                    if args.len() != 1 {
+                        return Err(RuntimeError::InvalidArgument);
+                    }
+                    Ok(Value::String(args[0].to_string()))
+                }),
+            );
+        }
+
+        self
     }
 
     pub fn with_host_function(mut self, name: &str, func: HostFunction) -> Self {
@@ -178,15 +206,18 @@ impl Vm {
                     }
                     Instruction::UnaryOp(op) => {
                         let operand = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        let result = match op {
+                        let _result = match op {
+                            #[cfg(feature = "bool_type")]
                             UnaryOp::Not => {
                                 let b = operand.as_bool()?;
                                 Value::Bool(!b)
                             }
                             UnaryOp::Neg => match operand {
+                                #[cfg(feature = "i32_type")]
                                 Value::I32(i) => Value::I32(
                                     i.checked_neg().ok_or(RuntimeError::IntegerOverflow)?,
                                 ),
+                                #[cfg(feature = "f32_type")]
                                 Value::F32(f) => Value::F32(-f),
                                 _ => {
                                     return Err(RuntimeError::InvalidOperand {
@@ -195,18 +226,22 @@ impl Vm {
                                 }
                             },
                         };
-                        stack.push(result);
+                        #[allow(unreachable_code)]
+                        stack.push(_result);
                         pc += 1;
                     }
                     Instruction::BinaryOp(op) => {
                         let right = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                         let left = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        let result = match op {
+                        let _result = match op {
                             BinaryOp::Add => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_add(r).ok_or(RuntimeError::IntegerOverflow)?,
                                 ),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::F32(l + r),
+                                #[cfg(feature = "string_type")]
                                 (Value::String(l), Value::String(r)) => {
                                     Value::String(format!("{l}{r}"))
                                 }
@@ -218,9 +253,11 @@ impl Vm {
                                 }
                             },
                             BinaryOp::Sub => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_sub(r).ok_or(RuntimeError::IntegerOverflow)?,
                                 ),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::F32(l - r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -230,9 +267,11 @@ impl Vm {
                                 }
                             },
                             BinaryOp::Mul => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_mul(r).ok_or(RuntimeError::IntegerOverflow)?,
                                 ),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::F32(l * r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -242,6 +281,7 @@ impl Vm {
                                 }
                             },
                             BinaryOp::Div => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => {
                                     if r == 0 {
                                         return Err(RuntimeError::IntegerDivisionByZero);
@@ -250,6 +290,7 @@ impl Vm {
                                         l.checked_div(r).ok_or(RuntimeError::IntegerOverflow)?,
                                     )
                                 }
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::F32(l / r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -259,12 +300,14 @@ impl Vm {
                                 }
                             },
                             BinaryOp::Mod => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => {
                                     if r == 0 {
                                         return Err(RuntimeError::IntegerDivisionByZero);
                                     }
                                     Value::I32(l % r)
                                 }
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::F32(l % r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -273,10 +316,15 @@ impl Vm {
                                     });
                                 }
                             },
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Eq => Value::Bool(left == right),
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Ne => Value::Bool(left != right),
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Lt => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l < r),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::Bool(l < r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -285,8 +333,11 @@ impl Vm {
                                     });
                                 }
                             },
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Le => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l <= r),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::Bool(l <= r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -295,8 +346,11 @@ impl Vm {
                                     });
                                 }
                             },
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Gt => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l > r),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::Bool(l > r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -305,8 +359,11 @@ impl Vm {
                                     });
                                 }
                             },
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::Ge => match (&left, &right) {
+                                #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l >= r),
+                                #[cfg(feature = "f32_type")]
                                 (&Value::F32(l), &Value::F32(r)) => Value::Bool(l >= r),
                                 _ => {
                                     return Err(RuntimeError::TypeMismatch {
@@ -315,16 +372,19 @@ impl Vm {
                                     });
                                 }
                             },
+                            #[cfg(feature = "bool_type")]
                             BinaryOp::And | BinaryOp::Or => {
                                 unreachable!("And/Or should have been desugared");
                             }
                         };
-                        stack.push(result);
+                        #[allow(unreachable_code)]
+                        stack.push(_result);
                         pc += 1;
                     }
                     Instruction::Jump(target) => {
                         pc = *target;
                     }
+                    #[cfg(feature = "bool_type")]
                     Instruction::JumpIfFalse(target) => {
                         let cond = stack.last().ok_or(RuntimeError::StackUnderflow)?;
                         let cond_val = cond.as_bool()?;

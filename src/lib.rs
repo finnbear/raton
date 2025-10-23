@@ -10,5 +10,7 @@ mod bytecode_generator;
 pub use bytecode_generator::*;
 mod bytecode_vm;
 pub use bytecode_vm::*;
+mod linker;
+pub use linker::*;
 #[cfg(test)]
 mod benches;

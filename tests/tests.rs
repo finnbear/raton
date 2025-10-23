@@ -1,4 +1,5 @@
 use raton::*;
+#[allow(unused_imports)]
 use std::time::Instant;
 
 fn assert_execute(src: &str, func: &str, args: Vec<Value>, expected: Value) {
@@ -20,6 +21,7 @@ fn minimal() {
 }
 
 #[test]
+#[cfg(feature = "f32_type")]
 fn simple_function() {
     let src = r#"
         fn to_float(a) {
@@ -31,6 +33,7 @@ fn simple_function() {
 }
 
 #[test]
+#[cfg(feature = "i32_type")]
 fn simple_math() {
     let src = r#"
         fn add(a, b) {
@@ -47,6 +50,7 @@ fn simple_math() {
 }
 
 #[test]
+#[cfg(all(feature = "if_expression", feature = "i32_type"))]
 fn simple_if_expression() {
     let src = r#"
         fn max(a, b) {
@@ -73,6 +77,7 @@ fn simple_if_expression() {
 }
 
 #[test]
+#[cfg(all(feature = "while_loop", feature = "i32_type"))]
 fn simple_while_loop() {
     let src = r#"
         fn sum_to_n(n) {
@@ -91,6 +96,7 @@ fn simple_while_loop() {
 }
 
 #[test]
+#[cfg(feature = "i32_type")]
 fn deep() {
     for n in (1..=50).step_by(3) {
         let mut deep = String::new();
