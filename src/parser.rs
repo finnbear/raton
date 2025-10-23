@@ -4,7 +4,7 @@ use nom::{
     IResult, Parser as NomParser,
     branch::alt,
     bytes::complete::{tag, take_while1},
-    character::complete::{alpha1, alphanumeric1, anychar, char, digit1, multispace0, multispace1},
+    character::complete::{alpha1, alphanumeric1, anychar, char, digit1, multispace0},
     combinator::{cut, map, not, opt, peek, recognize, value, verify},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
@@ -360,11 +360,11 @@ fn expression(i: &str) -> IResult<&str, Expr> {
 }
 
 fn parse_let(i: &str) -> IResult<&str, Stmt> {
-    let (i, _) = ws(terminated(tag("let"), multispace1)).parse(i)?;
-    let (i, name) = identifier.parse(i)?;
-    let (i, _) = ws(tag("=")).parse(i)?;
-    let (i, expr) = expression.parse(i)?;
-    let (i, _) = ws(tag(";")).parse(i)?;
+    let (i, _) = ws(keyword("let")).parse(i)?;
+    let (i, name) = cut(identifier).parse(i)?;
+    let (i, _) = ws(cut(char('='))).parse(i)?;
+    let (i, expr) = cut(expression).parse(i)?;
+    let (i, _) = ws(cut(char(';'))).parse(i)?;
 
     Ok((i, Stmt::Let(name, expr)))
 }
