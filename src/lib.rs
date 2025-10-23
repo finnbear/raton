@@ -13,5 +13,5 @@ mod bytecode_vm;
 pub use bytecode_vm::*;
 mod linker;
 pub use linker::*;
-#[cfg(test)]
+#[cfg(all(test, not(miri)))]
 mod benches;
