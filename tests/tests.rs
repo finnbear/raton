@@ -21,7 +21,7 @@ fn minimal() {
 }
 
 #[test]
-#[cfg(feature = "f32_type")]
+#[cfg(all(feature = "i32_type", feature = "f32_type"))]
 fn simple_function() {
     let src = r#"
         fn to_float(a) {
