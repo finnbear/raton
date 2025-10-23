@@ -371,9 +371,9 @@ fn parse_let(i: &str) -> IResult<&str, Stmt> {
 
 fn parse_assign(i: &str) -> IResult<&str, Stmt> {
     let (i, name) = identifier.parse(i)?;
-    let (i, _) = ws(tag("=")).parse(i)?;
-    let (i, expr) = expression.parse(i)?;
-    let (i, _) = ws(tag(";")).parse(i)?;
+    let (i, _) = ws(char('=')).parse(i)?;
+    let (i, expr) = cut(expression).parse(i)?;
+    let (i, _) = ws(cut(char(';'))).parse(i)?;
 
     Ok((i, Stmt::Assign(name, expr)))
 }
@@ -388,13 +388,13 @@ fn parse_while(i: &str) -> IResult<&str, Stmt> {
 }
 
 fn parse_break(i: &str) -> IResult<&str, Stmt> {
-    let (i, _) = ws(tag("break")).parse(i)?;
+    let (i, _) = ws(keyword("break")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
     Ok((i, Stmt::Break))
 }
 
 fn parse_continue(i: &str) -> IResult<&str, Stmt> {
-    let (i, _) = ws(tag("continue")).parse(i)?;
+    let (i, _) = ws(keyword("continue")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
     Ok((i, Stmt::Continue))
 }
@@ -408,7 +408,7 @@ fn parse_return(i: &str) -> IResult<&str, Stmt> {
 
 fn parse_expr_stmt(i: &str) -> IResult<&str, Stmt> {
     let (i, expr) = expression.parse(i)?;
-    let (i, _) = ws(tag(";")).parse(i)?;
+    let (i, _) = ws(char(';')).parse(i)?;
     Ok((i, Stmt::Expr(expr)))
 }
 
@@ -436,7 +436,7 @@ fn parse_stmt_or_expr(i: &str) -> IResult<&str, StmtOrExpr> {
     let (i, expr) = opt(expression).parse(i)?;
 
     if let Some(expr) = expr {
-        let (i, semi) = opt(ws(tag(";"))).parse(i)?;
+        let (i, semi) = opt(ws(char(';'))).parse(i)?;
         return Ok((
             i,
             if semi.is_some() {
@@ -464,7 +464,7 @@ fn parse_function(i: &str) -> IResult<&str, Function> {
     let (i, _) = ws(keyword("fn")).parse(i)?;
     let (i, name) = cut(identifier).parse(i)?;
     let (i, _) = ws(cut(char('('))).parse(i)?;
-    let (i, params) = separated_list0(ws(tag(",")), identifier).parse(i)?;
+    let (i, params) = separated_list0(ws(char(',')), identifier).parse(i)?;
     let (i, _) = ws(cut(char(')'))).parse(i)?;
     let (i, block) = parse_block(i)?;
 
