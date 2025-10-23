@@ -310,10 +310,13 @@ fn parse_block(i: &str) -> IResult<&str, Block> {
 
     let (i, _) = ws(cut(char('}'))).parse(i)?;
 
-    Ok((i, Block {
-        statements,
-        value: value.map(Box::new),
-    }))
+    Ok((
+        i,
+        Block {
+            statements,
+            value: value.map(Box::new),
+        },
+    ))
 }
 
 // If expression parser
@@ -323,11 +326,14 @@ fn parse_if(i: &str) -> IResult<&str, Expr> {
     let (i, cond) = cut(expression).parse(i)?;
     let (i, then_branch) = cut(parse_block).parse(i)?;
     let (i, else_branch) = opt(preceded(ws(keyword("else")), cut(parse_block))).parse(i)?;
-    Ok((i, Expr::If {
-        cond: Box::new(cond),
-        then_branch,
-        else_branch,
-    }))
+    Ok((
+        i,
+        Expr::If {
+            cond: Box::new(cond),
+            then_branch,
+            else_branch,
+        },
+    ))
 }
 
 // Primary expression (atom)
