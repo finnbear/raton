@@ -7,6 +7,7 @@ A tiny, embeddable, dynamically typed scripting language with a bytecode VM, int
 ## Example
 
 ```rust
+// Add up all integers from 1 to n
 fn sum_to_n(n) {
     let i = 0;
     let sum = 0;
@@ -42,7 +43,7 @@ Unfinished, do not use in production.
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
 - [x] Fuzzing (`cargo fuzz run fuzz -- -timeout=5`)
-- [ ] Comments
+- [x] Comments (`//` or `/* */`)
 - [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling

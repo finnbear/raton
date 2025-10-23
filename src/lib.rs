@@ -77,9 +77,9 @@ mod tests {
         let source = r#"
             fn max(a, b) {
                 if (a > b) {
-                    return a;
+                    return /*bigger*/ a;
                 } else {
-                    return b;
+                    return /* smaller */ b;
                 }
             }
         "#;
@@ -100,6 +100,7 @@ mod tests {
             fn sum_to_n(n) {
                 let i = 0;
                 let sum = 0;
+                // iterate n times
                 while (i < n) {
                     i = i + 1;
                     sum = sum + i;
@@ -126,6 +127,7 @@ mod tests {
             let source = format!(
                 r#"
                 fn deep() {{
+                    // deep
                     {deep}
                 }}
             "#

@@ -3,9 +3,9 @@ use crate::ast::*;
 use nom::{
     IResult, Parser as NomParser,
     branch::alt,
-    bytes::complete::{tag, take_while1},
+    bytes::complete::{tag, take_until, take_while1},
     character::complete::{alpha1, alphanumeric1, anychar, char, digit1, multispace0},
-    combinator::{cut, map, not, opt, peek, recognize, value, verify},
+    combinator::{cut, eof, map, not, opt, peek, recognize, value, verify},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
 };
@@ -112,12 +112,37 @@ impl Parser {
     }
 }
 
+/// Parse a single comment.
+pub fn comment(i: &str) -> IResult<&str, &str> {
+    preceded(
+        char('/'),
+        alt((
+            preceded(
+                char('/'),
+                terminated(take_until("\n"), alt((tag("\n"), eof))),
+            ),
+            preceded(char('*'), cut(terminated(take_until("*/"), tag("*/")))),
+        )),
+    )
+    .parse(i)
+}
+
+/// Parse several comments.
+pub fn comments(i: &str) -> IResult<&str, &str> {
+    recognize(many0(terminated(comment, multispace0))).parse(i)
+}
+
+/// In-between token parser (spaces and comments).
+fn blank(i: &str) -> IResult<&str, ()> {
+    value((), preceded(multispace0, comments)).parse(i)
+}
+
 // Whitespace helper
 fn ws<'a, F, O>(inner: F) -> impl NomParser<&'a str, Output = O, Error = nom::error::Error<&'a str>>
 where
     F: NomParser<&'a str, Output = O, Error = nom::error::Error<&'a str>>,
 {
-    delimited(multispace0, inner, multispace0)
+    delimited(blank, inner, blank)
 }
 
 // Keyword that must not be the prefix of an ident.
@@ -133,13 +158,13 @@ fn keyword<'a>(
 }
 
 fn identifier(i: &str) -> IResult<&str, String> {
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
     let (i, ident) = recognize((
         alt((alpha1, tag("_"))),
         many0(alt((alphanumeric1, tag("_")))),
     ))
     .parse(i)?;
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
 
     // Check for keywords
     match ident {
@@ -165,9 +190,9 @@ fn parse_bool(i: &str) -> IResult<&str, Value> {
 }
 
 fn parse_f32(i: &str) -> IResult<&str, Value> {
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
     let (i, num_str) = recognize((opt(char('-')), digit1, char('.'), digit1)).parse(i)?;
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
 
     match num_str.parse::<f32>() {
         Ok(f) => Ok((i, Value::F32(f))),
@@ -179,9 +204,9 @@ fn parse_f32(i: &str) -> IResult<&str, Value> {
 }
 
 fn parse_i32(i: &str) -> IResult<&str, Value> {
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
     let (i, num_str) = recognize(pair(opt(char('-')), digit1)).parse(i)?;
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
 
     match num_str.parse::<i32>() {
         Ok(n) => Ok((i, Value::I32(n))),
@@ -193,11 +218,11 @@ fn parse_i32(i: &str) -> IResult<&str, Value> {
 }
 
 fn parse_string(i: &str) -> IResult<&str, Value> {
-    let (i, _) = multispace0.parse(i)?;
+    let (i, _) = blank.parse(i)?;
     let (i, _) = char('"').parse(i)?;
     let (i, content) = take_while1(|c| c != '"').parse(i)?;
     let (i, _) = char('"').parse(i)?;
-    let (i, _) = multispace0.parse(i)?;
+    let (i, _) = blank.parse(i)?;
 
     Ok((i, Value::String(content.to_string())))
 }
@@ -478,6 +503,6 @@ fn parse_function(i: &str) -> IResult<&str, Function> {
 
 pub fn parse_program(i: &str) -> IResult<&str, Program> {
     let (i, functions) = many0(parse_function).parse(i)?;
-    let (i, _) = multispace0(i)?;
+    let (i, _) = blank(i)?;
     Ok((i, Program { functions }))
 }
