@@ -32,7 +32,7 @@ jobs:
       - name: Check (feature power-set)
         run: cargo hack check --feature-powerset
       - name: Test (feature power-set)
-        run: cargo hack test --feature-powerset
+        run: cargo hack test --feature-powerset --group-features --group-features serde,bitcode
       - name: Setup Miri
         run: cargo miri setup
       - name: Test (miri all-features)

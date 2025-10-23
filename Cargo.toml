@@ -4,7 +4,7 @@ authors = [ "Finn Bear" ]
 version = "0.1.0-alpha.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
-description = "raton is a tiny, modular, embeddable scripting language"
+description = "ratón is a tiny, modular, embeddable scripting language"
 repository = "https://github.com/finnbear/raton"
 exclude = ["fuzz/"]
 

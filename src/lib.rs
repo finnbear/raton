@@ -1,4 +1,5 @@
 #![cfg_attr(test, feature(test))]
+#![forbid(unsafe_code)]
 
 pub mod ast;
 mod value;

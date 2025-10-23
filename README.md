@@ -64,6 +64,7 @@ Unfinished, do not use in production.
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
 - [x] Fuzzing (`cargo fuzz run fuzz -- -timeout=5`)
+- [x] `#![forbid(unsafe_code)]`, also validated in Miri
 - [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling
