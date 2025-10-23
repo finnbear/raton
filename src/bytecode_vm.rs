@@ -1,5 +1,5 @@
 use crate::{
-    BytecodeGenerator, CompileError, Type, Value,
+    BytecodeGenerator, CompileError, FunctionBytecode, Type, Value,
     ast::{BinaryOp, Program, UnaryOp},
     bytecode::*,
 };
@@ -127,10 +127,15 @@ impl Vm {
 
     pub fn load_program(&mut self, program: &Program) -> Result<(), CompileError> {
         for func in &program.functions {
-            let bytecode = BytecodeGenerator::generate(func)?;
-            self.functions.insert(func.name.clone(), bytecode);
+            let bytecode = BytecodeGenerator::new().generate_function(func)?;
+            self.functions
+                .insert(func.name.clone(), bytecode.instructions);
         }
         Ok(())
+    }
+
+    pub fn with_compiled_function(&mut self, name: String, function: FunctionBytecode) {
+        self.functions.insert(name, function.instructions);
     }
 
     pub fn execute(&self, func_name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {

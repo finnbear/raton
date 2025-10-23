@@ -9,6 +9,18 @@ pub struct BytecodeGenerator {
     max_instructions: u32,
 }
 
+/*
+#[derive(Clone, Debug)]
+pub struct ProgramBytecode {
+    functions: HashMap<String, FunctionBytecode>,
+}
+*/
+
+#[derive(Clone, Debug)]
+pub struct FunctionBytecode {
+    pub instructions: Vec<Instruction>,
+}
+
 #[derive(Debug, Error)]
 pub enum CompileError {
     #[error("max instructions exceeded")]
@@ -18,7 +30,7 @@ pub enum CompileError {
 }
 
 impl BytecodeGenerator {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
             variable_stack: Vec::new(),
@@ -222,23 +234,20 @@ impl BytecodeGenerator {
         Ok(())
     }
 
-    pub fn generate(func: &Function) -> Result<Vec<Instruction>, CompileError> {
-        let mut generator = BytecodeGenerator::new();
-        generator.variable_stack.push(Vec::new());
+    pub fn generate_function(mut self, func: &Function) -> Result<FunctionBytecode, CompileError> {
+        self.variable_stack.push(Vec::new());
         for arg in &func.params {
-            generator
-                .variable_stack
-                .last_mut()
-                .unwrap()
-                .push(arg.clone());
+            self.variable_stack.last_mut().unwrap().push(arg.clone());
         }
         for stmt in &func.body {
-            generator.generate_stmt(stmt)?;
+            self.generate_stmt(stmt)?;
         }
-        if !matches!(generator.instructions.last(), Some(Instruction::Return)) {
-            generator.emit(Instruction::LoadConst(Value::Null))?;
-            generator.emit(Instruction::Return)?;
+        if !matches!(self.instructions.last(), Some(Instruction::Return)) {
+            self.emit(Instruction::LoadConst(Value::Null))?;
+            self.emit(Instruction::Return)?;
         }
-        Ok(generator.instructions)
+        Ok(FunctionBytecode {
+            instructions: self.instructions,
+        })
     }
 }
