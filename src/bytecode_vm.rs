@@ -146,7 +146,7 @@ impl Vm {
         // let mut stack_budget = self.max_stack_depth;
 
         if let Some(instructions) = self.functions.get(func_name) {
-            while pc < instructions.len() as u32 {
+            while let Some(instruction) = instructions.get(pc as usize) {
                 if let Some(instruction_budget) = &mut instruction_budget {
                     if let Some(next) = instruction_budget.checked_sub(1) {
                         *instruction_budget = next;
@@ -154,7 +154,7 @@ impl Vm {
                         return Err(RuntimeError::InstructionBudgetExceeded);
                     }
                 }
-                match &instructions[pc as usize] {
+                match instruction {
                     Instruction::LoadConst(val) => {
                         stack.push(val.clone());
                         pc += 1;
