@@ -1,6 +1,8 @@
 use crate::Value;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum UnaryOp {
     /// !
@@ -11,6 +13,8 @@ pub enum UnaryOp {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum BinaryOp {
     /// +
@@ -54,6 +58,7 @@ pub enum BinaryOp {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum Expr {
     /// null
@@ -83,6 +88,7 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 /// { stmt1; stmt2; }
 /// { stmt1; stmt2; value }
@@ -92,6 +98,7 @@ pub struct Block {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum Stmt {
     /// let name = expr;
@@ -115,6 +122,7 @@ pub enum Stmt {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct Function {
     pub name: String,
@@ -123,6 +131,7 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct Program {
     pub functions: Vec<Function>,

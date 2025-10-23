@@ -8,7 +8,7 @@ A tiny, highly modular, embeddable, dynamically typed scripting language with a 
 
 ```toml
 [dependences]
-raton = { features = ["i32_type", "while_loop"] }
+raton = { features = ["i32_type", "while_loop", "single_line_comment"], default-features = false }
 ```
 ```rust
 // Add up all integers from 1 to n
@@ -47,12 +47,17 @@ Unfinished, do not use in production.
 ## Modular language features
 - [x] `if`, `else` (optional `if_expression` feature)
 - [x] `while`, `break`, `continue` (optional `while_loop` feature)
+- [x] `//` comments (optional `single_line_comment` feature)
+- [x] `/* */` comments (optional `multi_line_comment` feature)
+
+## Serialization
+- [x] `serde` (ast and bytecode)
+- [x] `bitcode` (bytecode only)
 
 ## Other features
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
 - [x] Fuzzing (`cargo fuzz run fuzz -- -timeout=5`)
-- [x] Comments (`//` or `/* */`)
 - [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling

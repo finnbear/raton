@@ -8,7 +8,8 @@ publish = false
 [features]
 default = [
     "bool_type", "i32_type", "f32_type", "string_type",
-    "if_expression", "while_loop"
+    "if_expression", "while_loop",
+    "single_line_comment", "multi_line_comment",
 ]
 bool_type = []
 i32_type = []
@@ -16,8 +17,12 @@ f32_type = []
 string_type = []
 if_expression = ["bool_type"]
 while_loop = ["bool_type"]
+single_line_comment = []
+multi_line_comment = []
 
 [dependencies]
 nom = "8.0.0"
 nom-language = "0.1.0"
 thiserror = "2.0.17"
+serde = { version = "1", features = ["std", "derive"], default-features = false, optional = true }
+bitcode = { version = "0", features = ["std", "derive"], default-features = false, optional = true }

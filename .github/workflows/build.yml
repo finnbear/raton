@@ -31,10 +31,8 @@ jobs:
         run: cargo install cargo-hack
       - name: Check (feature power-set)
         run: cargo hack check --feature-powerset
-      - name: Test
-        run: cargo test --all-features
-      - name: Test (all-features)
-        run: cargo test --all-features
+      - name: Test (feature power-set)
+        run: cargo hack test --feature-powerset
       - name: Setup Miri
         run: cargo miri setup
       - name: Test (miri all-features)

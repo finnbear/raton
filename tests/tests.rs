@@ -83,7 +83,6 @@ fn simple_while_loop() {
         fn sum_to_n(n) {
             let i = 0;
             let sum = 0;
-            // iterate n times
             while (i < n) {
                 i = i + 1;
                 sum = sum + i;
@@ -93,6 +92,51 @@ fn simple_while_loop() {
     "#;
 
     assert_execute(src, "sum_to_n", vec![Value::I32(5)], Value::I32(15));
+}
+
+#[test]
+#[cfg(feature = "single_line_comment")]
+fn single_line_comments() {
+    let src = r#"
+        fn enterprise_grade() {
+            // hello
+            let a = null;
+            // foo bar
+        }
+    "#;
+
+    assert_execute(src, "enterprise_grade", vec![], Value::Null);
+}
+
+#[test]
+#[cfg(feature = "multi_line_comment")]
+fn multi_line_comments() {
+    let src = r#"
+        fn enterprise_grade() {
+            /* hello */
+            let /* hi */ a /* hi */ = /* hi */ null;
+            /* foo
+               bar */
+        }
+    "#;
+
+    assert_execute(src, "enterprise_grade", vec![], Value::Null);
+}
+
+#[test]
+#[cfg(all(feature = "single_line_comment", feature = "multi_line_comment"))]
+fn comments() {
+    let src = r#"
+        fn enterprise_grade() {
+            // hello
+            /* world */
+            let a = null;
+            /* foo
+               bar */
+        }
+    "#;
+
+    assert_execute(src, "enterprise_grade", vec![], Value::Null);
 }
 
 #[test]

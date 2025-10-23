@@ -114,14 +114,17 @@ impl Parser {
 }
 
 /// Parse a single comment.
+#[cfg(any(feature = "single_line_comment", feature = "multi_line_comment"))]
 pub fn comment(i: &str) -> IResult<&str, &str> {
     preceded(
         char('/'),
         alt((
+            #[cfg(feature = "single_line_comment")]
             preceded(
                 char('/'),
                 terminated(take_until("\n"), alt((tag("\n"), eof))),
             ),
+            #[cfg(feature = "multi_line_comment")]
             preceded(char('*'), cut(terminated(take_until("*/"), tag("*/")))),
         )),
     )
@@ -129,13 +132,17 @@ pub fn comment(i: &str) -> IResult<&str, &str> {
 }
 
 /// Parse several comments.
+#[cfg(any(feature = "single_line_comment", feature = "multi_line_comment"))]
 pub fn comments(i: &str) -> IResult<&str, &str> {
     recognize(many0(terminated(comment, multispace0))).parse(i)
 }
 
 /// In-between token parser (spaces and comments).
 fn blank(i: &str) -> IResult<&str, ()> {
-    value((), preceded(multispace0, comments)).parse(i)
+    #[cfg(any(feature = "single_line_comment", feature = "multi_line_comment"))]
+    return value((), preceded(multispace0, comments)).parse(i);
+    #[cfg(not(any(feature = "single_line_comment", feature = "multi_line_comment")))]
+    return value((), multispace0).parse(i);
 }
 
 // Whitespace helper

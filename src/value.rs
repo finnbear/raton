@@ -3,6 +3,8 @@ use crate::RuntimeError;
 use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Type {
     Null,
@@ -33,6 +35,8 @@ impl Display for Type {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Value {
     Null,

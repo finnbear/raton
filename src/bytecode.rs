@@ -4,6 +4,8 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Instruction {
     /// Push the constant onto the stack.
