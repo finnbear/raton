@@ -11,7 +11,23 @@ pub use bytecode_vm::*;
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use super::*;
+
+    #[test]
+    fn test_simpler() {
+        let source = r#"
+            fn hello(a) { }
+        "#;
+
+        let ast = Parser::new().parse(source).unwrap();
+        let mut vm = Vm::new().with_type_casting();
+        vm.load_program(&ast).unwrap();
+
+        let result = vm.execute("hello", vec![Value::Null]).unwrap();
+        assert_eq!(result, Value::Null);
+    }
 
     #[test]
     fn test_simple() {
@@ -28,6 +44,15 @@ mod tests {
         let result = vm.execute("hello", vec![Value::I32(5)]).unwrap();
         assert_eq!(result, Value::F32(5.0));
     }
+
+    /*
+    #[test]
+    fn test_linear_time() {
+        let source = include_str!("../fuzz/artifacts/fuzz/timeout-992fbd5b80652eec3a99fdbac2b76916d7a8df34");
+
+        let _ = Parser::new().parse(source);
+    }
+    */
 
     #[test]
     fn test_simple_math() {
@@ -89,6 +114,34 @@ mod tests {
 
         let result = vm.execute("sum_to_n", vec![Value::I32(5)]).unwrap();
         assert_eq!(result, Value::I32(15));
+    }
+
+    #[test]
+    fn test_deep() {
+        for n in (1..=19).step_by(3) {
+            let mut deep = String::new();
+            deep.push_str(&"{".repeat(n));
+            deep.push_str("42");
+            deep.push_str(&"}".repeat(n));
+            let source = format!(
+                r#"
+                fn deep() {{
+                    {deep}
+                }}
+            "#
+            );
+
+            let start = Instant::now();
+            let ast = Parser::new().parse(&source).unwrap();
+            let time = start.elapsed();
+            println!("{deep} {n}, {:.2}", time.as_secs_f32());
+
+            let mut vm = Vm::new();
+            vm.load_program(&ast).unwrap();
+
+            let result = vm.execute("deep", vec![Value::I32(5)]).unwrap();
+            assert_eq!(result, Value::I32(42));
+        }
     }
 
     #[test]

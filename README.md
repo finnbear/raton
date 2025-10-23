@@ -41,11 +41,11 @@ Unfinished, do not use in production.
 ## Other features
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
+- [x] Fuzzing (`cargo fuzz run fuzz -- -timeout=5`)
 - [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling
 - [ ] Proper error messages
-- [ ] Fuzzing
 
 ## License
 
