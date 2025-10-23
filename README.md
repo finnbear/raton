@@ -8,7 +8,11 @@ A tiny, highly modular, embeddable, dynamically typed scripting language with a 
 
 ```toml
 [dependences]
-raton = { features = ["i32_type", "while_loop", "single_line_comment"], default-features = false }
+raton = {
+  version = "0",
+  features = ["i32_type", "while_loop", "single_line_comment"],
+  default-features = false
+}
 ```
 ```rust
 // Add up all integers from 1 to n
