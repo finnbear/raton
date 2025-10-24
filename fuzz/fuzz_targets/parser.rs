@@ -38,8 +38,13 @@ fn target(src: &str) {
         .collect::<Vec<_>>()
     {
         let result = vm.execute(&func, &[Value::I32(5)]);
-        if matches!(result, Err(RuntimeError::StackUnderflow)) {
-            panic!("IRE");
+        if matches!(
+            result,
+            Err(RuntimeError::StackUnderflow
+                | RuntimeError::IllegalInstruction
+                | RuntimeError::BytecodeEndedAbruptly)
+        ) {
+            panic!("IRE {:?}", result);
         }
     }
 }
