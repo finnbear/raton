@@ -1,7 +1,6 @@
-use crate::{
-    Value,
-    ast::{BinaryOperator, UnaryOperator},
-};
+//! Bytecode type definitions.
+
+use crate::{BinaryOperator, UnaryOperator, Value};
 use std::collections::HashMap;
 
 /// A single bytecode instruction, which may contain arguments.

@@ -1,7 +1,8 @@
-use crate::{Value, ast::*, bytecode::*};
+use crate::{BinaryOperator, Value, ast::*, bytecode::*};
 use thiserror::Error;
 
-pub struct BytecodeGenerator {
+/// Turns an abstract syntax tree into bytecode.
+pub struct CodeGenerator {
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
     /// (start, breaks, continues)
@@ -19,7 +20,7 @@ pub enum CompileError {
     Internal,
 }
 
-impl BytecodeGenerator {
+impl CodeGenerator {
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),

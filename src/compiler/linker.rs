@@ -2,6 +2,7 @@ use crate::bytecode::{FunctionBytecode, Instruction, ProgramBytecode};
 use std::collections::{BTreeMap, HashMap, btree_map::Entry};
 use thiserror::Error;
 
+/// Links multiple items into a single instruction stream.
 pub struct Linker {
     functions: BTreeMap<String, FunctionBytecode>,
 }

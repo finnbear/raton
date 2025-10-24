@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use crate::RuntimeError;
+use crate::runtime::RuntimeError;
 use std::fmt::{self, Display};
 
 /// The type of a [`Value`].
@@ -35,8 +35,9 @@ impl Display for Type {
     }
 }
 
-/// A value, with no evaluation remaining, used an argument, operand,
-/// or return value.
+/// A value, used an argument, operand, or return value.
+///
+/// It cannot be evaluated any further.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]

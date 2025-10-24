@@ -1,11 +1,15 @@
+//! Run compiled bytecode.
+
 use crate::{
-    BytecodeGenerator, CompileError, Type, Value,
-    ast::{BinaryOperator, Program, UnaryOperator},
+    BinaryOperator, Type, UnaryOperator, Value,
+    ast::Program,
     bytecode::*,
+    compiler::{CodeGenerator, CompileError},
 };
 use std::collections::HashMap;
 use thiserror::Error;
 
+/// A Rust function that the script can call.
 pub type HostFunction = Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
 
 /// Interprets bytecode.
@@ -155,7 +159,7 @@ impl VirtualMachine {
 
     pub fn load_program(&mut self, program: &Program) -> Result<(), CompileError> {
         for func in &program.functions {
-            let bytecode = BytecodeGenerator::new().generate_function(func)?;
+            let bytecode = CodeGenerator::new().generate_function(func)?;
             self.functions
                 .insert(func.identifier.clone(), bytecode.instructions);
         }
