@@ -35,7 +35,9 @@ pub enum Expression {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct UnaryExpression {
+    /// Operator.
     pub operator: UnaryOperator,
+    /// Operand.
     pub operand: Box<Expression>,
 }
 
@@ -45,8 +47,11 @@ pub struct UnaryExpression {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct BinaryExpression {
+    /// Left-hand side operand.
     pub left: Box<Expression>,
+    /// Operator.
     pub operator: BinaryOperator,
+    /// Right-hand side operand.
     pub right: Box<Expression>,
 }
 
@@ -56,7 +61,9 @@ pub struct BinaryExpression {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct CallExpression {
+    /// Name of the function to call.
     pub identifier: Identifier,
+    /// Expressions to evaluate to produce function arguments.
     pub arguments: Vec<Expression>,
 }
 
@@ -67,8 +74,12 @@ pub struct CallExpression {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(feature = "if_expression")]
 pub struct IfExpression {
+    /// Check if this condition is true.
     pub condition: Box<Expression>,
+    /// Evaluate if the condition was true.
     pub then_branch: BlockExpression,
+    /// Evaluate if the condition was false.
+    ///
     /// If absent, a false condition means the [`IfExpression`]
     /// implicitly evaluates to [`Value::Null`].
     pub else_branch: Option<BlockExpression>,

@@ -46,7 +46,9 @@ pub enum Instruction {
 #[allow(unused)]
 #[non_exhaustive]
 pub struct ProgramBytecode {
+    /// Information on public functions, callable from outside the program.
     pub public_functions: HashMap<String, PublicFunction>,
+    /// The bytecode instruction stream of the program.
     pub instructions: Vec<Instruction>,
 }
 
@@ -58,6 +60,8 @@ pub struct ProgramBytecode {
 #[allow(unused)]
 #[non_exhaustive]
 pub struct PublicFunction {
-    pub ip: u32,
+    /// The address of the first instruction of the function.
+    pub address: u32,
+    /// The number of arguments of the function.
     pub arguments: u8,
 }

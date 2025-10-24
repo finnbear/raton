@@ -9,13 +9,18 @@ use std::fmt::{self, Display};
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Type {
+    /// The type of [`Value::Null`].
     Null,
+    /// The type of [`Value::Bool`].
     #[cfg(feature = "bool_type")]
     Bool,
+    /// The type of [`Value::I32`].
     #[cfg(feature = "i32_type")]
     I32,
+    /// The type of [`Value::F32`].
     #[cfg(feature = "f32_type")]
     F32,
+    /// The type of [`Value::String`].
     #[cfg(feature = "string_type")]
     String,
 }
@@ -45,13 +50,18 @@ impl Display for Type {
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Value {
+    /// A missing value.
     Null,
+    /// A boolean, [`true`] or [`false`].
     #[cfg(feature = "bool_type")]
     Bool(bool),
+    /// A signed 32-bit integer.
     #[cfg(feature = "i32_type")]
     I32(i32),
+    /// An IEEE-754 32-bit float.
     #[cfg(feature = "f32_type")]
     F32(f32),
+    /// A UTF-8 string.
     #[cfg(feature = "string_type")]
     String(String),
 }

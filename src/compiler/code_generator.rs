@@ -23,6 +23,7 @@ impl Default for CodeGenerator {
 
 /// An error produced when compiling a program into bytecode.
 #[derive(Debug, Error)]
+#[allow(missing_docs)]
 pub enum CompileError {
     #[error("undefined variable ({name})")]
     UndefinedVariable { name: Identifier },
@@ -39,6 +40,7 @@ pub enum CompileError {
 }
 
 impl CodeGenerator {
+    /// Create a configurable code generator.
     pub fn new() -> Self {
         Self {
             instructions: Vec::new(),
@@ -52,11 +54,13 @@ impl CodeGenerator {
         }
     }
 
+    /// Return a [`CompileError`] if there would be more than `max` instructions.
     pub fn with_max_instructions(mut self, max: u32) -> Self {
         self.max_instructions = max.min(u32::MAX - 1);
         self
     }
 
+    /// Return a [`CompileError`] if nesting depth of expressions/statements exceeds this.
     pub fn with_max_depth(mut self, max: u32) -> Self {
         self.max_depth = max;
         self
@@ -307,8 +311,8 @@ impl CodeGenerator {
                     continues.push(addr);
                 }
             }
-            Statement::Return(expr) => {
-                if let Some(expr) = expr {
+            Statement::Return(ReturnStatement { value }) => {
+                if let Some(expr) = value {
                     self.generate_expr(expr)?;
                 } else {
                     self.emit(Instruction::LoadConstant(Value::Null))?;
@@ -330,7 +334,7 @@ impl CodeGenerator {
         self.public_functions.insert(
             func.identifier.clone(),
             PublicFunction {
-                ip,
+                address: ip,
                 arguments: func.arguments.len() as u8,
             },
         );
@@ -347,6 +351,7 @@ impl CodeGenerator {
         Ok(())
     }
 
+    /// Generate bytecode from a program abstract-syntax-tree.
     pub fn generate_program(mut self, program: &Program) -> Result<ProgramBytecode, CompileError> {
         for function in &program.functions {
             self.generate_function(function)?;
@@ -357,7 +362,7 @@ impl CodeGenerator {
                     if func.arguments != *args {
                         return Err(CompileError::ArgumentsMismatch);
                     }
-                    *instruction = Instruction::CallByAddress(func.ip, *args);
+                    *instruction = Instruction::CallByAddress(func.address, *args);
                 }
             }
         }

@@ -5,6 +5,7 @@ pub use expression::*;
 mod statement;
 pub use statement::*;
 
+/// Variable or function name.
 pub type Identifier = String;
 
 /// A function with a name, parameters, and a body.
@@ -29,5 +30,6 @@ pub struct Function {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct Program {
+    /// Functions defined in the program.
     pub functions: Vec<Function>,
 }

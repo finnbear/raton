@@ -16,19 +16,52 @@ use thiserror::Error;
 
 /// Parses source code into an abstract syntax tree.
 #[non_exhaustive]
+#[derive(Clone, Debug)]
 pub struct Parser {
     max_depth: u32,
 }
 
-impl Debug for Parser {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Parser").finish_non_exhaustive()
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Parser {
+    /// Create a configurable parser.
+    pub fn new() -> Self {
+        Self { max_depth: 50 }
+    }
+
+    /// Return a [`ParseError`] if nesting depth of expressions/statements exceeds this.
+    pub fn with_max_depth(mut self, max: u32) -> Self {
+        self.max_depth = max;
+        self
+    }
+
+    /// Parse a program abstract-syntax-tree from source code.
+    pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
+        depth_limiter::reset(self.max_depth);
+
+        let ret = parse_program.parse(src);
+
+        match ret {
+            Ok((i, p)) => {
+                if i.is_empty() {
+                    return Ok(p);
+                } else {
+                    return Err(Vec::new());
+                }
+            }
+            Err(_) => return Err(Vec::new()),
+        }
     }
 }
 
 /// A parse error at the given location in the source code.
 #[derive(Clone, Debug, Error)]
 #[error("parse error from {} to {}: {reason}", span.start, span.end)]
+#[allow(missing_docs)]
 pub struct ParseError {
     pub span: Range<usize>,
     pub reason: ParseErrorReason,
@@ -36,6 +69,7 @@ pub struct ParseError {
 
 /// The reason for a [`ParseError`] at a given location.
 #[derive(Clone, Debug)]
+#[allow(missing_docs)]
 pub enum ParseErrorReason {
     Unexpected {
         expected: Vec<String>,
@@ -93,34 +127,6 @@ mod depth_limiter {
             DEPTH.with(|depth| {
                 depth.fetch_add(1, Ordering::Relaxed);
             })
-        }
-    }
-}
-
-impl Parser {
-    pub fn new() -> Self {
-        Self { max_depth: 50 }
-    }
-
-    pub fn with_max_depth(mut self, max: u32) -> Self {
-        self.max_depth = max;
-        self
-    }
-
-    pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
-        depth_limiter::reset(self.max_depth);
-
-        let ret = parse_program.parse(src);
-
-        match ret {
-            Ok((i, p)) => {
-                if i.is_empty() {
-                    return Ok(p);
-                } else {
-                    return Err(Vec::new());
-                }
-            }
-            Err(_) => return Err(Vec::new()),
         }
     }
 }
@@ -496,9 +502,9 @@ fn parse_continue(i: &str) -> IResult<&str, Statement> {
 
 fn parse_return(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("return")).parse(i)?;
-    let (i, expr) = opt(expression).parse(i)?;
+    let (i, value) = opt(expression).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-    Ok((i, Statement::Return(expr)))
+    Ok((i, Statement::Return(ReturnStatement { value })))
 }
 
 #[cfg(feature = "while_loop")]
