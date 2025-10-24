@@ -2,6 +2,7 @@ use super::{Expression, Identifier};
 
 /// A statement, ending in a semicolon.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum Statement {
@@ -27,6 +28,7 @@ pub enum Statement {
 
 /// `let identifier = expression;`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct LetStatement {
@@ -36,6 +38,7 @@ pub struct LetStatement {
 
 /// `identifier = expression;`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct AssignStatement {
@@ -45,6 +48,7 @@ pub struct AssignStatement {
 
 /// `while condition { statement1; statement2; }`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 #[cfg(feature = "while_loop")]

@@ -4,9 +4,10 @@ use thiserror::Error;
 
 /// Turns an abstract syntax tree into bytecode.
 pub struct CodeGenerator {
-    public_functions: HashMap<Identifier, u32>,
+    public_functions: HashMap<Identifier, PublicFunction>,
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
+    variable_count: u8,
     /// (start, breaks, continues)
     #[cfg(feature = "while_loop")]
     loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
@@ -28,6 +29,8 @@ pub enum CompileError {
     Shadowing { name: Identifier },
     #[error("max instructions exceeded")]
     MaxInstructionsExceeded,
+    #[error("arguments mismatch")]
+    ArgumentsMismatch,
     #[error("internal compiler error")]
     Internal,
 }
@@ -37,6 +40,7 @@ impl CodeGenerator {
         Self {
             instructions: Vec::new(),
             variable_stack: Vec::new(),
+            variable_count: 0,
             #[cfg(feature = "while_loop")]
             loop_stack: Vec::new(),
             max_instructions: u32::MAX - 1,
@@ -82,7 +86,7 @@ impl CodeGenerator {
         }
     }
 
-    fn variable_index(&self, name: &Identifier) -> Result<u8, CompileError> {
+    fn variable_index(&mut self, name: &Identifier) -> Result<u8, CompileError> {
         let reverse_index = self
             .variable_stack
             .iter()
@@ -95,6 +99,9 @@ impl CodeGenerator {
             .iter()
             .flat_map(|vars| vars.iter())
             .count();
+
+        self.variable_count = self.variable_count.max(len as u8);
+
         Ok((len - 1 - reverse_index) as u8)
     }
 
@@ -303,16 +310,24 @@ impl CodeGenerator {
                 name: func.identifier.clone(),
             });
         }
-        self.public_functions
-            .insert(func.identifier.clone(), self.instructions.len() as u32);
-        self.variable_stack.push(Vec::new());
-        for arg in &func.arguments {
-            self.variable_stack.last_mut().unwrap().push(arg.clone());
-        }
+        self.variable_count = 0;
+        let ip = self.emit(Instruction::AllocVars(0))?;
+        self.public_functions.insert(
+            func.identifier.clone(),
+            PublicFunction {
+                ip,
+                arguments: func.arguments.len() as u8,
+            },
+        );
+
+        self.variable_stack.push(func.arguments.clone());
         self.generate_block(&func.body)?;
         if !matches!(self.instructions.last(), Some(Instruction::Return)) {
             self.emit(Instruction::Return)?;
         }
+
+        self.instructions[ip as usize] = Instruction::AllocVars(self.variable_count);
+
         Ok(())
     }
 
@@ -323,10 +338,14 @@ impl CodeGenerator {
         for instruction in &mut self.instructions {
             if let Instruction::CallByName(name, args) = instruction {
                 if let Some(func) = self.public_functions.get(&*name) {
-                    *instruction = Instruction::CallByIp(*func, *args);
+                    if func.arguments != *args {
+                        return Err(CompileError::ArgumentsMismatch);
+                    }
+                    *instruction = Instruction::CallByIp(func.ip, *args);
                 }
             }
         }
+
         Ok(ProgramBytecode {
             public_functions: self.public_functions,
             instructions: self.instructions,

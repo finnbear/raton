@@ -29,3 +29,4 @@ nom-language = "0.1.0"
 thiserror = "2.0.17"
 serde = { version = "1", features = ["std", "derive"], default-features = false, optional = true }
 bitcode = { version = "0", features = ["std", "derive"], default-features = false, optional = true }
+arbitrary = { version = "1", features = ["derive"], optional = true }

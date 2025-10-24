@@ -2,12 +2,12 @@ use raton::prelude::*;
 #[allow(unused_imports)]
 use std::time::Instant;
 
-fn assert_execute(src: &str, func: &str, args: Vec<Value>, expected: Value) {
+fn assert_execute(src: &str, func: &str, args: &[Value], expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
     let program = CodeGenerator::new().generate_program(&ast).unwrap();
-    let vm = VirtualMachine::new(&program).with_type_casting();
+    let mut vm = VirtualMachine::new(&program).with_type_casting();
 
-    let result = vm.execute(func, args).unwrap();
+    let result = vm.execute(func, &args).unwrap();
     assert_eq!(result, expected);
 }
 
@@ -17,7 +17,7 @@ fn minimal() {
         fn hello() {}
     "#;
 
-    assert_execute(src, "hello", vec![], Value::Null);
+    assert_execute(src, "hello", &[], Value::Null);
 }
 
 #[test]
@@ -29,7 +29,7 @@ fn simple_function() {
         }
     "#;
 
-    assert_execute(src, "to_float", vec![Value::I32(5)], Value::F32(5.0));
+    assert_execute(src, "to_float", &[Value::I32(5)], Value::F32(5.0));
 }
 
 #[test]
@@ -41,12 +41,7 @@ fn simple_math() {
         }
     "#;
 
-    assert_execute(
-        src,
-        "add",
-        vec![Value::I32(5), Value::I32(3)],
-        Value::I32(8),
-    );
+    assert_execute(src, "add", &[Value::I32(5), Value::I32(3)], Value::I32(8));
 }
 
 #[test]
@@ -62,18 +57,8 @@ fn simple_if_expression() {
         }
     "#;
 
-    assert_execute(
-        src,
-        "max",
-        vec![Value::I32(5), Value::I32(3)],
-        Value::I32(5),
-    );
-    assert_execute(
-        src,
-        "max",
-        vec![Value::I32(3), Value::I32(5)],
-        Value::I32(5),
-    );
+    assert_execute(src, "max", &[Value::I32(5), Value::I32(3)], Value::I32(5));
+    assert_execute(src, "max", &[Value::I32(3), Value::I32(5)], Value::I32(5));
 }
 
 #[test]
@@ -91,7 +76,7 @@ fn simple_while_loop() {
         }
     "#;
 
-    assert_execute(src, "sum_to_n", vec![Value::I32(5)], Value::I32(15));
+    assert_execute(src, "sum_to_n", &[Value::I32(5)], Value::I32(15));
 }
 
 #[test]
@@ -134,7 +119,7 @@ fn single_line_comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", vec![], Value::Null);
+    assert_execute(src, "enterprise_grade", &[], Value::Null);
 }
 
 #[test]
@@ -149,7 +134,7 @@ fn multi_line_comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", vec![], Value::Null);
+    assert_execute(src, "enterprise_grade", &[], Value::Null);
 }
 
 #[test]
@@ -165,7 +150,7 @@ fn comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", vec![], Value::Null);
+    assert_execute(src, "enterprise_grade", &[], Value::Null);
 }
 
 #[test]
@@ -185,7 +170,7 @@ fn deep() {
         );
 
         let start = Instant::now();
-        assert_execute(&src, "deep", vec![], Value::I32(42));
+        assert_execute(&src, "deep", &[], Value::I32(42));
         let time = start.elapsed();
         println!("{n}, {:.2}", time.as_secs_f32());
     }

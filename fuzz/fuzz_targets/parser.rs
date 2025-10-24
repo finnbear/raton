@@ -1,12 +1,19 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use raton::{ast::Program, prelude::*};
+use raton::prelude::*;
 
-fuzz_target!(|ast: Program| {
-    target(ast);
+fuzz_target!(|src: &str| {
+    target(src);
 });
 
-fn target(ast: Program) {
+fn target(src: &str) {
+    let ast = match Parser::new().parse(src) {
+        Ok(ast) => ast,
+        Err(_errs) => {
+            // TODO.
+            return;
+        }
+    };
     let program = match CodeGenerator::new().with_max_instructions(1000).generate_program(&ast) {
         Ok(p) => p,
         Err(_err) => {

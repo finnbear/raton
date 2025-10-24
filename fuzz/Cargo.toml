@@ -13,13 +13,21 @@ libfuzzer-sys = "0.4"
 
 [dependencies.raton]
 path = ".."
+features = ["arbitrary"]
 
 # Prevent this from interfering with workspaces
 [workspace]
 members = ["."]
 
 [[bin]]
+name = "parser"
+path = "fuzz_targets/parser.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "fuzz"
 path = "fuzz_targets/fuzz.rs"
 test = false
 doc = false
+

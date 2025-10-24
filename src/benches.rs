@@ -18,14 +18,18 @@ use test::Bencher;
 // test benches::fib_28             ... bench:  58,545,572.00 ns/iter (+/- 10,114,819.82)
 // test benches::million_iterations ... bench:  42,496,642.50 ns/iter (+/- 8,920,702.95)
 
+// Oct 24 2025 (after custom stack further optimized)
+// test benches::fib_28             ... bench:  57,441,287.50 ns/iter (+/- 10,581,056.86)
+// test benches::million_iterations ... bench:  39,619,527.30 ns/iter (+/- 7,884,078.85)
+
 #[allow(unused)]
-fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expected: Value) {
+fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: &[Value], expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
     let program = CodeGenerator::new().generate_program(&ast).unwrap();
     let mut vm = VirtualMachine::new(&program).with_type_casting();
 
     b.iter(|| {
-        let result = vm.execute(func, args.clone()).unwrap();
+        let result = vm.execute(func, args).unwrap();
         assert_eq!(result, expected);
     })
 }
@@ -42,7 +46,7 @@ fn million_iterations(b: &mut Bencher) {
         }
     "#;
 
-    bench_execute(b, src, "million", vec![], Value::Null);
+    bench_execute(b, src, "million", &[], Value::Null);
 }
 
 #[bench]
@@ -58,5 +62,5 @@ fn fib_28(b: &mut test::Bencher) {
         }
     "#;
 
-    bench_execute(b, src, "fib", vec![Value::I32(28)], Value::I32(317811));
+    bench_execute(b, src, "fib", &[Value::I32(28)], Value::I32(317811));
 }

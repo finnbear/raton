@@ -3,6 +3,7 @@ use crate::{BinaryOperator, UnaryOperator, Value};
 
 /// An expresssion that may be evaluated to produce a value.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum Expression {
@@ -30,6 +31,7 @@ pub enum Expression {
 
 /// `-operand`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct UnaryExpression {
@@ -39,6 +41,7 @@ pub struct UnaryExpression {
 
 /// `lhs * rhs`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct BinaryExpression {
@@ -49,6 +52,7 @@ pub struct BinaryExpression {
 
 /// `identifier(arg1, arg2)`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub struct CallExpression {
@@ -59,6 +63,7 @@ pub struct CallExpression {
 /// `if cond { then_branch }`
 /// `if cond { then_branch } else { else_branch }`
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(feature = "if_expression")]
 pub struct IfExpression {
@@ -70,6 +75,7 @@ pub struct IfExpression {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 /// A sequence of statements, possibly followed by an expression,
