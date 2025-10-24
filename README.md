@@ -2,7 +2,8 @@
 
 [![Documentation](https://docs.rs/raton/badge.svg)](https://docs.rs/raton)
 [![crates.io](https://img.shields.io/crates/v/raton.svg)](https://crates.io/crates/raton)
-[![Build](https://github.com/finnbear/raton/actions/workflows/build.yml/badge.svg)](https://github.com/finnbear/raton/actions/workflows/build.yml) 
+[![Build](https://github.com/finnbear/raton/actions/workflows/build.yml/badge.svg)](https://github.com/finnbear/raton/actions/workflows/build.yml)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 
 A tiny, highly modular, embeddable, dynamically typed scripting language with a bytecode VM, intended for use in games.
 
@@ -62,8 +63,6 @@ Unfinished, do not use in production.
 ## Other features
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
-- [x] Fuzzing (`cargo fuzz run fuzz -- -timeout=5`)
-- [x] `#![forbid(unsafe_code)]`, also validated in Miri
 - [ ] `no_std`
 - [ ] Denial of service prevention
 - [ ] Proper error handling
@@ -73,7 +72,8 @@ Unfinished, do not use in production.
 
 Ratón is designed to handle untrusted or malicious source code, asts, or bytecode
 without panicking, exhausting memory, memory unsafety, exponential time complexity,
-or infinite loop. Each component has a fuzzer that tests it against arbitrary inputs.
+or infinite loop. Unsafe code is forbidden, and each component has a fuzzer that
+tests it against arbitrary inputs.
 
 You are responsible for using the limits, such as on instructions and call stack
 depth, that it provides.
