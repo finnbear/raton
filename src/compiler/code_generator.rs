@@ -66,7 +66,8 @@ impl CodeGenerator {
         self
     }
 
-    /// Return a [`CompileError`] if there would be more than this many varaibles in a function.
+    /// Return a [`CompileError`] if there would be more than this many variables in a function,
+    /// which includes the function's arguments.
     ///
     /// Default: 100
     pub fn with_max_local_variables(mut self, max: u16) -> Self {

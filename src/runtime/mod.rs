@@ -53,22 +53,29 @@ impl<'a> VirtualMachine<'a> {
         Self {
             program,
             host_functions: HashMap::new(),
-            max_instructions: None,
-            max_stack_depth: None,
+            max_instructions: Some(100_000_000),
+            max_stack_depth: Some(50),
             stack: Vec::new(),
         }
     }
 
     /// Return a [`RuntimeError::MaxInstructionsExceeded`] if would execute more than this many instructions.
-    pub fn with_max_instructions(mut self, max: u32) -> Self {
-        self.max_instructions = Some(max);
+    ///
+    /// Default: 100 million
+    pub fn with_max_instructions<T: Into<Option<u32>>>(mut self, max: T) -> Self {
+        self.max_instructions = max.into();
         self
     }
 
     /// Return a [`RuntimeError::StackOverflow`] if more than this many nested functions
     /// are on the call stack. A host function is tracked as a single function.
-    pub fn with_max_stack_depth(mut self, max: u8) -> Self {
-        self.max_stack_depth = Some(max);
+    ///
+    /// Note: the stack is heap-allocated, so the host's call stack isn't as much of a
+    /// factor.
+    ///
+    /// Default: 50
+    pub fn with_max_stack_depth<T: Into<Option<u8>>>(mut self, max: T) -> Self {
+        self.max_stack_depth = max.into();
         self
     }
 

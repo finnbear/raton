@@ -18,7 +18,7 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct Parser {
-    max_depth: u32,
+    max_depth: u8,
 }
 
 impl Default for Parser {
@@ -34,14 +34,18 @@ impl Parser {
     }
 
     /// Return a [`ParseError`] if nesting depth of expressions/statements exceeds this.
-    pub fn with_max_depth(mut self, max: u32) -> Self {
+    ///
+    /// Note: parsing uses the call stack, so stack overflow is a concern.
+    ///
+    /// Default: 50
+    pub fn with_max_depth(mut self, max: u8) -> Self {
         self.max_depth = max;
         self
     }
 
     /// Parse a program abstract-syntax-tree from source code.
     pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
-        depth_limiter::reset(self.max_depth);
+        depth_limiter::reset(self.max_depth as u32);
 
         let ret = parse_program.parse(src);
 

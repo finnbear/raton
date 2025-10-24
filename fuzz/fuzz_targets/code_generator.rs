@@ -21,7 +21,7 @@ fn target(ast: Program) {
     };
     let mut vm = VirtualMachine::new(&program)
         .with_type_casting()
-        .with_max_instructions(200)
+        .with_max_instructions(10000)
         .with_max_stack_depth(10);
 
     for func in ast
