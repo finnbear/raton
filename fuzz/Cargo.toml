@@ -26,8 +26,13 @@ test = false
 doc = false
 
 [[bin]]
-name = "fuzz"
-path = "fuzz_targets/fuzz.rs"
+name = "code_generator"
+path = "fuzz_targets/code_generator.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "virtual_machine"
+path = "fuzz_targets/virtual_machine.rs"
+test = false
+doc = false

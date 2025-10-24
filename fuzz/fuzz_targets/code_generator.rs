@@ -7,7 +7,10 @@ fuzz_target!(|ast: Program| {
 });
 
 fn target(ast: Program) {
-    let program = match CodeGenerator::new().with_max_instructions(1000).generate_program(&ast) {
+    let program = match CodeGenerator::new()
+        .with_max_instructions(1000)
+        .generate_program(&ast)
+    {
         Ok(p) => p,
         Err(_err) => {
             // TODO.

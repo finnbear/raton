@@ -40,6 +40,8 @@ pub enum RuntimeError {
     StackOverflow,
     #[error("instruction budget exceeded")]
     InstructionBudgetExceeded,
+    #[error("illegal instruction")]
+    IllegalInstruction,
     #[error("bytecode ended abruptly")]
     BytecodeEndedAbruptly,
 }
@@ -393,7 +395,7 @@ impl<'a> VirtualMachine<'a> {
                         },
                         #[cfg(feature = "bool_type")]
                         BinaryOperator::And | BinaryOperator::Or => {
-                            unreachable!("And/Or should have been desugared");
+                            return Err(RuntimeError::IllegalInstruction);
                         }
                     };
                     #[allow(unreachable_code)]

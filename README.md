@@ -69,6 +69,15 @@ Unfinished, do not use in production.
 - [ ] Proper error handling
 - [ ] Proper error messages
 
+## Security
+
+Ratón is designed to handle untrusted or malicious source code, asts, or bytecode
+without panicking, exhausting memory, memory unsafety, exponential time complexity,
+or infinite loop. Each component has a fuzzer that tests it against arbitrary inputs.
+
+You are responsible for using the limits, such as on instructions and call stack
+depth, that it provides.
+
 ## License
 
 Licensed under either of
