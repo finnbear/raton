@@ -210,6 +210,7 @@ pub struct Function {
     pub body: BlockExpression,
 }
 
+/// A abstract syntax tree representing a program.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]

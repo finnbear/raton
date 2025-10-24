@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-
 use crate::{
     Value,
     ast::{BinaryOperator, UnaryOperator},
 };
+use std::collections::HashMap;
 
+/// A single bytecode instruction, which may contain arguments.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -33,6 +33,7 @@ pub enum Instruction {
     Pop,
 }
 
+/// A bytecode instruction stream for a single function.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -41,12 +42,14 @@ pub struct FunctionBytecode {
     pub instructions: Vec<Instruction>,
 }
 
+/// A bytecode instruction stream for a whole program, with known entry
+/// points for public functions.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[allow(unused)]
 #[non_exhaustive]
 pub struct ProgramBytecode {
-    pub functions: HashMap<String, u32>,
+    pub public_functions: HashMap<String, u32>,
     pub instructions: Vec<Instruction>,
 }

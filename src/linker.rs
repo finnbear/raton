@@ -51,7 +51,7 @@ impl Linker {
         }
 
         ProgramBytecode {
-            functions,
+            public_functions: functions,
             instructions,
         }
     }

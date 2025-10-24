@@ -10,6 +10,7 @@ pub struct BytecodeGenerator {
     max_instructions: u32,
 }
 
+/// An error produced when compiling a program into bytecode.
 #[derive(Debug, Error)]
 pub enum CompileError {
     #[error("max instructions exceeded")]
@@ -133,7 +134,10 @@ impl BytecodeGenerator {
                 self.generate_expr(right)?;
                 self.emit(Instruction::BinaryOp(operator.clone()))?;
             }
-            Expression::Call(CallExpression { identifier: name, arguments }) => {
+            Expression::Call(CallExpression {
+                identifier: name,
+                arguments,
+            }) => {
                 for argument in arguments {
                     self.generate_expr(argument)?;
                 }

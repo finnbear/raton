@@ -16,7 +16,7 @@ fn target(src: &str) {
             return;
         }
     };
-    let mut vm = Vm::new()
+    let mut vm = VirtualMachine::new()
         .with_type_casting()
         .with_instruction_budget(200)
         .with_max_stack_depth(10);
@@ -31,7 +31,7 @@ fn target(src: &str) {
     for _func in ast
         .functions
         .iter()
-        .map(|f| f.name.clone())
+        .map(|f| f.identifier.clone())
         .collect::<Vec<_>>()
     {
         // infinite recursion not protected yet.

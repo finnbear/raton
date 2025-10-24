@@ -16,6 +16,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use thiserror::Error;
 
+/// Parses source code into an abstract syntax tree.
 #[non_exhaustive]
 pub struct Parser {
     _hidden: PhantomData<()>,
@@ -27,6 +28,7 @@ impl Debug for Parser {
     }
 }
 
+/// A parse error at the given location in the source code.
 #[derive(Clone, Debug, Error)]
 #[error("parse error from {} to {}: {reason}", span.start, span.end)]
 pub struct ParseError {
@@ -34,6 +36,7 @@ pub struct ParseError {
     pub reason: ParseErrorReason,
 }
 
+/// The reason for a [`ParseError`] at a given location.
 #[derive(Clone, Debug)]
 pub enum ParseErrorReason {
     Unexpected {
@@ -115,7 +118,7 @@ impl Parser {
 
 /// Parse a single comment.
 #[cfg(any(feature = "single_line_comment", feature = "multi_line_comment"))]
-pub fn comment(i: &str) -> IResult<&str, &str> {
+fn comment(i: &str) -> IResult<&str, &str> {
     preceded(
         char('/'),
         alt((
@@ -133,7 +136,7 @@ pub fn comment(i: &str) -> IResult<&str, &str> {
 
 /// Parse several comments.
 #[cfg(any(feature = "single_line_comment", feature = "multi_line_comment"))]
-pub fn comments(i: &str) -> IResult<&str, &str> {
+fn comments(i: &str) -> IResult<&str, &str> {
     recognize(many0(terminated(comment, multispace0))).parse(i)
 }
 
@@ -554,10 +557,17 @@ fn parse_function(i: &str) -> IResult<&str, Function> {
     let (i, arguments) = separated_list0(ws(char(',')), parse_identifier).parse(i)?;
     let (i, _) = ws(cut(char(')'))).parse(i)?;
     let (i, body) = parse_block(i)?;
-    Ok((i, Function { identifier, arguments, body }))
+    Ok((
+        i,
+        Function {
+            identifier,
+            arguments,
+            body,
+        },
+    ))
 }
 
-pub fn parse_program(i: &str) -> IResult<&str, Program> {
+fn parse_program(i: &str) -> IResult<&str, Program> {
     let (i, functions) = many0(parse_function).parse(i)?;
     let (i, _) = blank(i)?;
     Ok((i, Program { functions }))

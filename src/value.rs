@@ -2,6 +2,7 @@
 use crate::RuntimeError;
 use std::fmt::{self, Display};
 
+/// The type of a [`Value`].
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -34,6 +35,8 @@ impl Display for Type {
     }
 }
 
+/// A value, with no evaluation remaining, used an argument, operand,
+/// or return value.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -51,6 +54,7 @@ pub enum Value {
 }
 
 impl Value {
+    /// Get the [`Type`] of the value.
     pub fn type_of(&self) -> Type {
         match self {
             Value::Null => Type::Null,
