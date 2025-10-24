@@ -9,7 +9,7 @@ fuzz_target!(|program: ProgramBytecode| {
 fn target(program: ProgramBytecode) {
     let mut vm = VirtualMachine::new(&program)
         .with_type_casting()
-        .with_instruction_budget(1000)
+        .with_max_instructions(1000)
         .with_max_stack_depth(10);
 
     for func in program
