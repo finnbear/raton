@@ -4,7 +4,10 @@ use std::time::Instant;
 
 fn assert_execute(src: &str, func: &str, args: &[Value], expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
-    let program = CodeGenerator::new().generate_program(&ast).unwrap();
+    let program = CodeGenerator::new()
+        .with_max_depth(100)
+        .generate_program(&ast)
+        .unwrap();
     let mut vm = VirtualMachine::new(&program).with_type_casting();
 
     let result = vm.execute(func, &args).unwrap();

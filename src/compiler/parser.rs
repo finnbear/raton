@@ -11,14 +11,13 @@ use nom::{
 };
 use nom_language::precedence::{binary_op, precedence, unary_op, Assoc, Operation};
 use std::fmt::{self, Debug, Display, Write};
-use std::marker::PhantomData;
 use std::ops::Range;
 use thiserror::Error;
 
 /// Parses source code into an abstract syntax tree.
 #[non_exhaustive]
 pub struct Parser {
-    _hidden: PhantomData<()>,
+    max_depth: u32,
 }
 
 impl Debug for Parser {
@@ -70,10 +69,16 @@ mod depth_limiter {
     #[must_use]
     pub struct DepthGuard {}
 
+    pub fn reset(max: u32) {
+        DEPTH.with(|depth| {
+            depth.store(max, Ordering::Relaxed);
+        });
+    }
+
     pub fn dive(i: &str) -> Result<DepthGuard, nom::Err<nom::error::Error<&str>>> {
         DEPTH.with(|depth| {
-            let depth = depth.fetch_add(1, Ordering::Relaxed);
-            if depth > 50 {
+            let depth = depth.fetch_sub(1, Ordering::Relaxed);
+            if depth == 0 {
                 return Err(nom::Err::Failure(nom::error::Error::new(
                     i,
                     nom::error::ErrorKind::TooLarge,
@@ -86,7 +91,7 @@ mod depth_limiter {
     impl Drop for DepthGuard {
         fn drop(&mut self) {
             DEPTH.with(|depth| {
-                depth.fetch_sub(1, Ordering::Relaxed);
+                depth.fetch_add(1, Ordering::Relaxed);
             })
         }
     }
@@ -94,12 +99,17 @@ mod depth_limiter {
 
 impl Parser {
     pub fn new() -> Self {
-        Self {
-            _hidden: PhantomData,
-        }
+        Self { max_depth: 50 }
+    }
+
+    pub fn with_max_depth(mut self, max: u32) -> Self {
+        self.max_depth = max;
+        self
     }
 
     pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
+        depth_limiter::reset(self.max_depth);
+
         let ret = parse_program.parse(src);
 
         match ret {
@@ -461,6 +471,10 @@ fn parse_while(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("while")).parse(i)?;
     let (i, condition) = cut(expression).parse(i)?;
     let (i, _) = ws(cut(char('{'))).parse(i)?;
+
+    // While can be nested without expressions.
+    let _guard = depth_limiter::dive(i)?;
+
     let (i, body) = many0(parse_stmt).parse(i)?;
     let (i, _) = ws(cut(char('}'))).parse(i)?;
     Ok((i, Statement::While(WhileLoop { condition, body })))
@@ -496,8 +510,6 @@ fn parse_expr_stmt(i: &str) -> IResult<&str, Statement> {
 
 #[cfg(feature = "while_loop")]
 fn parse_stmt(i: &str) -> IResult<&str, Statement> {
-    let _guard = depth_limiter::dive(i)?;
-
     alt((
         parse_let,
         #[cfg(feature = "while_loop")]

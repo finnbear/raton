@@ -15,7 +15,7 @@ fn target(src: &str) {
         }
     };
     let program = match CodeGenerator::new()
-        .with_max_instructions(1000)
+        .with_max_instructions(100_000)
         .generate_program(&ast)
     {
         Ok(p) => p,

@@ -12,6 +12,7 @@ pub struct CodeGenerator {
     #[cfg(feature = "while_loop")]
     loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
     max_instructions: u32,
+    max_depth: u32,
 }
 
 impl Default for CodeGenerator {
@@ -29,6 +30,8 @@ pub enum CompileError {
     Shadowing { name: Identifier },
     #[error("max instructions exceeded")]
     MaxInstructionsExceeded,
+    #[error("max depth exceeded")]
+    MaxDepthExceeded,
     #[error("arguments mismatch")]
     ArgumentsMismatch,
     #[error("internal compiler error")]
@@ -45,11 +48,17 @@ impl CodeGenerator {
             loop_stack: Vec::new(),
             max_instructions: u32::MAX - 1,
             public_functions: Default::default(),
+            max_depth: 50,
         }
     }
 
     pub fn with_max_instructions(mut self, max: u32) -> Self {
         self.max_instructions = max.min(u32::MAX - 1);
+        self
+    }
+
+    pub fn with_max_depth(mut self, max: u32) -> Self {
+        self.max_depth = max;
         self
     }
 
@@ -106,6 +115,9 @@ impl CodeGenerator {
     }
 
     fn generate_block(&mut self, block: &BlockExpression) -> Result<(), CompileError> {
+        if self.variable_stack.len() == self.max_depth as usize {
+            return Err(CompileError::MaxDepthExceeded);
+        }
         self.variable_stack.push(Vec::new());
         for stmt in &block.statements {
             self.generate_stmt(stmt)?;
@@ -256,6 +268,9 @@ impl CodeGenerator {
                 let jump_end = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
 
+                if self.variable_stack.len() == self.max_depth as usize {
+                    return Err(CompileError::MaxDepthExceeded);
+                }
                 self.variable_stack.push(Vec::new());
 
                 for stmt in body {
@@ -320,6 +335,7 @@ impl CodeGenerator {
             },
         );
 
+        self.variable_stack.clear();
         self.variable_stack.push(func.arguments.clone());
         self.generate_block(&func.body)?;
         if !matches!(self.instructions.last(), Some(Instruction::Return)) {
@@ -327,8 +343,6 @@ impl CodeGenerator {
         }
 
         self.instructions[ip as usize] = Instruction::AllocVars(self.variable_count);
-
-        self.variable_stack.clear();
 
         Ok(())
     }
