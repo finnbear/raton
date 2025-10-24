@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::{ast::*, bytecode::*, BinaryOperator, Value};
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// Turns an abstract syntax tree into bytecode.
