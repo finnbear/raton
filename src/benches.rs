@@ -1,4 +1,4 @@
-use crate::{Value, compiler::*, runtime::*};
+use crate::prelude::*;
 extern crate test;
 use test::Bencher;
 

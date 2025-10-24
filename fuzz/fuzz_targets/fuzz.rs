@@ -1,6 +1,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use raton::*;
+use raton::prelude::*;
 use std::sync::LazyLock;
 
 fuzz_target!(|src: &str| {
