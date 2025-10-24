@@ -10,13 +10,6 @@ pub struct BytecodeGenerator {
     max_instructions: u32,
 }
 
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
-pub struct FunctionBytecode {
-    pub instructions: Vec<Instruction>,
-}
-
 #[derive(Debug, Error)]
 pub enum CompileError {
     #[error("max instructions exceeded")]
@@ -74,7 +67,7 @@ impl BytecodeGenerator {
         }
     }
 
-    fn generate_block(&mut self, block: &Block) -> Result<(), CompileError> {
+    fn generate_block(&mut self, block: &BlockExpression) -> Result<(), CompileError> {
         for stmt in &block.statements {
             self.generate_stmt(stmt)?;
         }
@@ -86,24 +79,28 @@ impl BytecodeGenerator {
         Ok(())
     }
 
-    fn generate_expr(&mut self, expr: &Expr) -> Result<(), CompileError> {
+    fn generate_expr(&mut self, expr: &Expression) -> Result<(), CompileError> {
         match expr {
-            Expr::Literal(val) => {
+            Expression::Literal(val) => {
                 self.emit(Instruction::LoadConst(val.clone()))?;
             }
-            Expr::Variable(name) => {
+            Expression::Variable(name) => {
                 if let Some(last) = self.variable_stack.last_mut() {
                     // TODO.
                     let index = last.iter().rposition(|v| v == name).unwrap_or(0);
                     self.emit(Instruction::LoadVar(index as u8))?;
                 }
             }
-            Expr::Unary(op, operand) => {
+            Expression::Unary(UnaryExpression { operand, operator }) => {
                 self.generate_expr(operand)?;
-                self.emit(Instruction::UnaryOp(op.clone()))?;
+                self.emit(Instruction::UnaryOp(operator.clone()))?;
             }
             #[cfg(feature = "bool_type")]
-            Expr::Binary(BinaryOp::And, left, right) => {
+            Expression::Binary(BinaryExpression {
+                operator: BinaryOperator::And,
+                left,
+                right,
+            }) => {
                 self.generate_expr(left)?;
                 let jump_addr = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
@@ -112,7 +109,11 @@ impl BytecodeGenerator {
                 self.patch_jump(jump_addr, end_addr)?;
             }
             #[cfg(feature = "bool_type")]
-            Expr::Binary(BinaryOp::Or, left, right) => {
+            Expression::Binary(BinaryExpression {
+                operator: BinaryOperator::Or,
+                left,
+                right,
+            }) => {
                 self.generate_expr(left)?;
                 let jump_addr = self.emit(Instruction::JumpIfFalse(0))?;
                 let jump_end = self.emit(Instruction::Jump(0))?;
@@ -123,23 +124,27 @@ impl BytecodeGenerator {
                 let end_addr = self.current_addr();
                 self.patch_jump(jump_end, end_addr)?;
             }
-            Expr::Binary(op, left, right) => {
+            Expression::Binary(BinaryExpression {
+                left,
+                right,
+                operator,
+            }) => {
                 self.generate_expr(left)?;
                 self.generate_expr(right)?;
-                self.emit(Instruction::BinaryOp(op.clone()))?;
+                self.emit(Instruction::BinaryOp(operator.clone()))?;
             }
-            Expr::Call(name, args) => {
-                for arg in args {
-                    self.generate_expr(arg)?;
+            Expression::Call(CallExpression { identifier: name, arguments }) => {
+                for argument in arguments {
+                    self.generate_expr(argument)?;
                 }
-                self.emit(Instruction::Call(name.clone(), args.len() as u8))?;
+                self.emit(Instruction::Call(name.clone(), arguments.len() as u8))?;
             }
             #[cfg(feature = "if_expression")]
-            Expr::If {
-                cond,
+            Expression::If(IfExpression {
+                condition: cond,
                 then_branch,
                 else_branch,
-            } => {
+            }) => {
                 self.generate_expr(cond)?;
                 let jump_else = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
@@ -160,43 +165,49 @@ impl BytecodeGenerator {
                 let end_addr = self.current_addr();
                 self.patch_jump(jump_end, end_addr)?;
             }
-            Expr::Block(block) => {
+            Expression::Block(block) => {
                 self.generate_block(block)?;
             }
         }
         Ok(())
     }
 
-    fn generate_stmt(&mut self, stmt: &Stmt) -> Result<(), CompileError> {
+    fn generate_stmt(&mut self, stmt: &Statement) -> Result<(), CompileError> {
         match stmt {
-            Stmt::Let(name, expr) => {
+            Statement::Let(LetStatement {
+                identifier,
+                expression,
+            }) => {
                 if let Some(last) = self.variable_stack.last_mut() {
                     let index = last.len();
                     // TODO.
-                    last.push(name.clone());
+                    last.push(identifier.clone());
 
-                    self.generate_expr(expr)?;
+                    self.generate_expr(expression)?;
                     self.emit(Instruction::StoreVar(index as u8))?;
                 }
             }
-            Stmt::Assign(name, expr) => {
+            Statement::Assign(AssignStatement {
+                identifier,
+                expression,
+            }) => {
                 if let Some(last) = self.variable_stack.last_mut() {
                     // TODO.
-                    let index = last.iter().rposition(|v| v == name).unwrap_or(0);
-                    self.generate_expr(expr)?;
+                    let index = last.iter().rposition(|v| v == identifier).unwrap_or(0);
+                    self.generate_expr(expression)?;
                     self.emit(Instruction::StoreVar(index as u8))?;
                 }
             }
-            Stmt::Expr(expr) => {
+            Statement::Expression(expr) => {
                 self.generate_expr(expr)?;
                 self.emit(Instruction::Pop)?;
             }
             #[cfg(feature = "while_loop")]
-            Stmt::While { cond, body } => {
+            Statement::While(WhileLoop { condition, body }) => {
                 let loop_start = self.current_addr();
                 self.loop_stack.push((loop_start, Vec::new(), Vec::new()));
 
-                self.generate_expr(cond)?;
+                self.generate_expr(condition)?;
                 let jump_end = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
 
@@ -219,20 +230,20 @@ impl BytecodeGenerator {
                 }
             }
             #[cfg(feature = "while_loop")]
-            Stmt::Break => {
+            Statement::Break => {
                 let addr = self.emit(Instruction::Jump(0))?;
                 if let Some((_, breaks, _)) = self.loop_stack.last_mut() {
                     breaks.push(addr);
                 }
             }
             #[cfg(feature = "while_loop")]
-            Stmt::Continue => {
+            Statement::Continue => {
                 let addr = self.emit(Instruction::Jump(0))?;
                 if let Some((_, _, continues)) = self.loop_stack.last_mut() {
                     continues.push(addr);
                 }
             }
-            Stmt::Return(expr) => {
+            Statement::Return(expr) => {
                 if let Some(expr) = expr {
                     self.generate_expr(expr)?;
                 } else {
@@ -246,14 +257,14 @@ impl BytecodeGenerator {
 
     pub fn generate_function(mut self, func: &Function) -> Result<FunctionBytecode, CompileError> {
         self.variable_stack.push(Vec::new());
-        for arg in &func.params {
+        for arg in &func.arguments {
             self.variable_stack.last_mut().unwrap().push(arg.clone());
         }
-        for stmt in &func.body {
+        self.generate_block(&func.body)?;
+        for stmt in &func.body.statements {
             self.generate_stmt(stmt)?;
         }
         if !matches!(self.instructions.last(), Some(Instruction::Return)) {
-            self.emit(Instruction::LoadConst(Value::Null))?;
             self.emit(Instruction::Return)?;
         }
         Ok(FunctionBytecode {

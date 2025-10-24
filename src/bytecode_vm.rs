@@ -1,6 +1,6 @@
 use crate::{
-    BytecodeGenerator, CompileError, FunctionBytecode, Type, Value,
-    ast::{BinaryOp, Program, UnaryOp},
+    BytecodeGenerator, CompileError, Type, Value,
+    ast::{BinaryOperator, Program, UnaryOperator},
     bytecode::*,
 };
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use thiserror::Error;
 pub type HostFunction = Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
 
 /// Interprets bytecode.
-pub struct Vm {
+pub struct VirtualMachine {
     functions: HashMap<String, Vec<Instruction>>,
     host_functions: HashMap<String, HostFunction>,
     instruction_budget: Option<u32>,
@@ -42,7 +42,7 @@ pub enum RuntimeError {
     InstructionBudgetExceeded,
 }
 
-impl Vm {
+impl VirtualMachine {
     pub fn new() -> Self {
         Self {
             functions: HashMap::new(),
@@ -157,7 +157,7 @@ impl Vm {
         for func in &program.functions {
             let bytecode = BytecodeGenerator::new().generate_function(func)?;
             self.functions
-                .insert(func.name.clone(), bytecode.instructions);
+                .insert(func.identifier.clone(), bytecode.instructions);
         }
         Ok(())
     }
@@ -208,11 +208,11 @@ impl Vm {
                         let operand = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                         let _result = match op {
                             #[cfg(feature = "bool_type")]
-                            UnaryOp::Not => {
+                            UnaryOperator::Not => {
                                 let b = operand.as_bool()?;
                                 Value::Bool(!b)
                             }
-                            UnaryOp::Neg => match operand {
+                            UnaryOperator::Neg => match operand {
                                 #[cfg(feature = "i32_type")]
                                 Value::I32(i) => Value::I32(
                                     i.checked_neg().ok_or(RuntimeError::IntegerOverflow)?,
@@ -234,7 +234,7 @@ impl Vm {
                         let right = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                         let left = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                         let _result = match op {
-                            BinaryOp::Add => match (&left, &right) {
+                            BinaryOperator::Add => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_add(r).ok_or(RuntimeError::IntegerOverflow)?,
@@ -252,7 +252,7 @@ impl Vm {
                                     });
                                 }
                             },
-                            BinaryOp::Sub => match (&left, &right) {
+                            BinaryOperator::Subtract => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_sub(r).ok_or(RuntimeError::IntegerOverflow)?,
@@ -266,7 +266,7 @@ impl Vm {
                                     });
                                 }
                             },
-                            BinaryOp::Mul => match (&left, &right) {
+                            BinaryOperator::Multiply => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::I32(
                                     l.checked_mul(r).ok_or(RuntimeError::IntegerOverflow)?,
@@ -280,7 +280,7 @@ impl Vm {
                                     });
                                 }
                             },
-                            BinaryOp::Div => match (&left, &right) {
+                            BinaryOperator::Divide => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => {
                                     if r == 0 {
@@ -299,7 +299,7 @@ impl Vm {
                                     });
                                 }
                             },
-                            BinaryOp::Mod => match (&left, &right) {
+                            BinaryOperator::Modulo => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => {
                                     if r == 0 {
@@ -317,11 +317,11 @@ impl Vm {
                                 }
                             },
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Eq => Value::Bool(left == right),
+                            BinaryOperator::Equal => Value::Bool(left == right),
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Ne => Value::Bool(left != right),
+                            BinaryOperator::NotEqual => Value::Bool(left != right),
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Lt => match (&left, &right) {
+                            BinaryOperator::LessThan => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l < r),
                                 #[cfg(feature = "f32_type")]
@@ -334,7 +334,7 @@ impl Vm {
                                 }
                             },
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Le => match (&left, &right) {
+                            BinaryOperator::LessThanOrEqual => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l <= r),
                                 #[cfg(feature = "f32_type")]
@@ -347,7 +347,7 @@ impl Vm {
                                 }
                             },
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Gt => match (&left, &right) {
+                            BinaryOperator::GreaterThan => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l > r),
                                 #[cfg(feature = "f32_type")]
@@ -360,7 +360,7 @@ impl Vm {
                                 }
                             },
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::Ge => match (&left, &right) {
+                            BinaryOperator::GreaterThanOrEqual => match (&left, &right) {
                                 #[cfg(feature = "i32_type")]
                                 (&Value::I32(l), &Value::I32(r)) => Value::Bool(l >= r),
                                 #[cfg(feature = "f32_type")]
@@ -373,7 +373,7 @@ impl Vm {
                                 }
                             },
                             #[cfg(feature = "bool_type")]
-                            BinaryOp::And | BinaryOp::Or => {
+                            BinaryOperator::And | BinaryOperator::Or => {
                                 unreachable!("And/Or should have been desugared");
                             }
                         };

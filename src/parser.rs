@@ -165,7 +165,7 @@ fn keyword<'a>(
     )
 }
 
-fn identifier(i: &str) -> IResult<&str, String> {
+fn parse_identifier(i: &str) -> IResult<&str, String> {
     let (i, _) = blank(i)?;
     let (i, ident) = recognize((
         alt((alpha1, tag("_"))),
@@ -262,7 +262,7 @@ fn parse_literal(i: &str) -> IResult<&str, Value> {
 // Postfix operators for precedence parser
 #[derive(Clone)]
 enum PostfixOp {
-    Call(Vec<Expr>),
+    Call(Vec<Expression>),
 }
 
 fn function_call(i: &str) -> IResult<&str, PostfixOp> {
@@ -277,7 +277,7 @@ fn function_call(i: &str) -> IResult<&str, PostfixOp> {
     .parse(i)
 }
 
-fn parse_block(i: &str) -> IResult<&str, Block> {
+fn parse_block(i: &str) -> IResult<&str, BlockExpression> {
     let (mut i, _) = ws(char('{')).parse(i)?;
 
     let mut statements = Vec::new();
@@ -312,7 +312,7 @@ fn parse_block(i: &str) -> IResult<&str, Block> {
 
     Ok((
         i,
-        Block {
+        BlockExpression {
             statements,
             value: value.map(Box::new),
         },
@@ -321,44 +321,44 @@ fn parse_block(i: &str) -> IResult<&str, Block> {
 
 // If expression parser
 #[cfg(feature = "if_expression")]
-fn parse_if(i: &str) -> IResult<&str, Expr> {
+fn parse_if(i: &str) -> IResult<&str, Expression> {
     let (i, _) = ws(keyword("if")).parse(i)?;
     let (i, cond) = cut(expression).parse(i)?;
     let (i, then_branch) = cut(parse_block).parse(i)?;
     let (i, else_branch) = opt(preceded(ws(keyword("else")), cut(parse_block))).parse(i)?;
     Ok((
         i,
-        Expr::If {
-            cond: Box::new(cond),
+        Expression::If(IfExpression {
+            condition: Box::new(cond),
             then_branch,
             else_branch,
-        },
+        }),
     ))
 }
 
 // Primary expression (atom)
-fn primary_expr(i: &str) -> IResult<&str, Expr> {
+fn primary_expr(i: &str) -> IResult<&str, Expression> {
     alt((
-        map(parse_literal, Expr::Literal),
+        map(parse_literal, Expression::Literal),
         #[cfg(feature = "if_expression")]
         parse_if,
-        map(parse_block, Expr::Block),
-        map(identifier, Expr::Variable),
+        map(parse_block, Expression::Block),
+        map(parse_identifier, Expression::Variable),
         delimited(ws(char('(')), expression, ws(cut(char(')')))),
     ))
     .parse(i)
 }
 
 // Main expression parser using precedence
-fn expression(i: &str) -> IResult<&str, Expr> {
+fn expression(i: &str) -> IResult<&str, Expression> {
     let _guard = depth_limiter::dive(i)?;
 
     precedence(
         // Prefix operators
         alt((
             #[cfg(feature = "bool_type")]
-            unary_op(2, value(UnaryOp::Not, ws(tag("!")))),
-            unary_op(2, value(UnaryOp::Neg, ws(tag("-")))),
+            unary_op(2, value(UnaryOperator::Not, ws(tag("!")))),
+            unary_op(2, value(UnaryOperator::Neg, ws(tag("-")))),
         )),
         // Postfix operators (function calls)
         unary_op(1, function_call),
@@ -369,9 +369,9 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 3,
                 Assoc::Left,
                 alt((
-                    value(BinaryOp::Mul, ws(tag("*"))),
-                    value(BinaryOp::Div, ws(tag("/"))),
-                    value(BinaryOp::Mod, ws(tag("%"))),
+                    value(BinaryOperator::Multiply, ws(tag("*"))),
+                    value(BinaryOperator::Divide, ws(tag("/"))),
+                    value(BinaryOperator::Modulo, ws(tag("%"))),
                 )),
             ),
             // Level 4: Additive
@@ -379,8 +379,8 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 4,
                 Assoc::Left,
                 alt((
-                    value(BinaryOp::Add, ws(tag("+"))),
-                    value(BinaryOp::Sub, ws(tag("-"))),
+                    value(BinaryOperator::Add, ws(tag("+"))),
+                    value(BinaryOperator::Subtract, ws(tag("-"))),
                 )),
             ),
             // Level 5: Comparison
@@ -389,10 +389,10 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 5,
                 Assoc::Left,
                 alt((
-                    value(BinaryOp::Le, ws(tag("<="))),
-                    value(BinaryOp::Ge, ws(tag(">="))),
-                    value(BinaryOp::Lt, ws(tag("<"))),
-                    value(BinaryOp::Gt, ws(tag(">"))),
+                    value(BinaryOperator::LessThanOrEqual, ws(tag("<="))),
+                    value(BinaryOperator::GreaterThanOrEqual, ws(tag(">="))),
+                    value(BinaryOperator::LessThan, ws(tag("<"))),
+                    value(BinaryOperator::GreaterThan, ws(tag(">"))),
                 )),
             ),
             // Level 6: Equality
@@ -401,89 +401,99 @@ fn expression(i: &str) -> IResult<&str, Expr> {
                 6,
                 Assoc::Left,
                 alt((
-                    value(BinaryOp::Eq, ws(tag("=="))),
-                    value(BinaryOp::Ne, ws(tag("!="))),
+                    value(BinaryOperator::Equal, ws(tag("=="))),
+                    value(BinaryOperator::NotEqual, ws(tag("!="))),
                 )),
             ),
             // Level 7: Logical AND
             #[cfg(feature = "bool_type")]
-            binary_op(7, Assoc::Left, value(BinaryOp::And, ws(tag("&&")))),
+            binary_op(7, Assoc::Left, value(BinaryOperator::And, ws(tag("&&")))),
             // Level 8: Logical OR
             #[cfg(feature = "bool_type")]
-            binary_op(8, Assoc::Left, value(BinaryOp::Or, ws(tag("||")))),
+            binary_op(8, Assoc::Left, value(BinaryOperator::Or, ws(tag("||")))),
         )),
         primary_expr,
-        |op: Operation<UnaryOp, PostfixOp, BinaryOp, Expr>| -> Result<Expr, ()> {
+        |op: Operation<UnaryOperator, PostfixOp, BinaryOperator, Expression>| -> Result<Expression, ()> {
             use Operation::*;
             match op {
-                Prefix(op, e) => Ok(Expr::Unary(op, Box::new(e))),
-                Postfix(Expr::Variable(name), PostfixOp::Call(args)) => Ok(Expr::Call(name, args)),
+                Prefix(operator, operand) => Ok(Expression::Unary(UnaryExpression { operator, operand: Box::new(operand) })),
+                Postfix(Expression::Variable(name), PostfixOp::Call(arguments)) => Ok(Expression::Call(CallExpression{identifier: name, arguments})),
                 Postfix(_, PostfixOp::Call(_)) => Err(()),
-                Binary(lhs, op, rhs) => Ok(Expr::Binary(op, Box::new(lhs), Box::new(rhs))),
+                Binary(left, operator, right) => Ok(Expression::Binary(BinaryExpression{operator, left: Box::new(left), right: Box::new(right)})),
             }
         },
     )(i)
 }
 
-fn parse_let(i: &str) -> IResult<&str, Stmt> {
+fn parse_let(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("let")).parse(i)?;
-    let (i, name) = cut(identifier).parse(i)?;
+    let (i, identifier) = cut(parse_identifier).parse(i)?;
     let (i, _) = ws(cut(char('='))).parse(i)?;
-    let (i, expr) = cut(expression).parse(i)?;
+    let (i, expression) = cut(expression).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-
-    Ok((i, Stmt::Let(name, expr)))
+    Ok((
+        i,
+        Statement::Let(LetStatement {
+            identifier,
+            expression,
+        }),
+    ))
 }
 
-fn parse_assign(i: &str) -> IResult<&str, Stmt> {
-    let (i, name) = identifier.parse(i)?;
+fn parse_assign(i: &str) -> IResult<&str, Statement> {
+    let (i, identifier) = parse_identifier.parse(i)?;
     let (i, _) = ws(char('=')).parse(i)?;
-    let (i, expr) = cut(expression).parse(i)?;
+    let (i, expression) = cut(expression).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-
-    Ok((i, Stmt::Assign(name, expr)))
+    Ok((
+        i,
+        Statement::Assign(AssignStatement {
+            identifier,
+            expression,
+        }),
+    ))
 }
 
 #[cfg(feature = "while_loop")]
-fn parse_while(i: &str) -> IResult<&str, Stmt> {
+fn parse_while(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("while")).parse(i)?;
-    let (i, cond) = cut(expression).parse(i)?;
+    let (i, condition) = cut(expression).parse(i)?;
     let (i, _) = ws(cut(char('{'))).parse(i)?;
     let (i, body) = many0(parse_stmt).parse(i)?;
     let (i, _) = ws(cut(char('}'))).parse(i)?;
-    Ok((i, Stmt::While { cond, body }))
+    Ok((i, Statement::While(WhileLoop { condition, body })))
 }
 
 #[cfg(feature = "while_loop")]
-fn parse_break(i: &str) -> IResult<&str, Stmt> {
+fn parse_break(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("break")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-    Ok((i, Stmt::Break))
+    Ok((i, Statement::Break))
 }
 
 #[cfg(feature = "while_loop")]
-fn parse_continue(i: &str) -> IResult<&str, Stmt> {
+fn parse_continue(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("continue")).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-    Ok((i, Stmt::Continue))
+    Ok((i, Statement::Continue))
 }
 
-fn parse_return(i: &str) -> IResult<&str, Stmt> {
+fn parse_return(i: &str) -> IResult<&str, Statement> {
     let (i, _) = ws(keyword("return")).parse(i)?;
     let (i, expr) = opt(expression).parse(i)?;
     let (i, _) = ws(cut(char(';'))).parse(i)?;
-    Ok((i, Stmt::Return(expr)))
+    Ok((i, Statement::Return(expr)))
 }
 
 #[cfg(feature = "while_loop")]
-fn parse_expr_stmt(i: &str) -> IResult<&str, Stmt> {
+fn parse_expr_stmt(i: &str) -> IResult<&str, Statement> {
     let (i, expr) = expression.parse(i)?;
     let (i, _) = ws(char(';')).parse(i)?;
-    Ok((i, Stmt::Expr(expr)))
+    Ok((i, Statement::Expression(expr)))
 }
 
 #[cfg(feature = "while_loop")]
-fn parse_stmt(i: &str) -> IResult<&str, Stmt> {
+fn parse_stmt(i: &str) -> IResult<&str, Statement> {
     let _guard = depth_limiter::dive(i)?;
 
     alt((
@@ -502,8 +512,8 @@ fn parse_stmt(i: &str) -> IResult<&str, Stmt> {
 }
 
 enum StmtOrExpr {
-    Stmt(Stmt),
-    Expr(Expr),
+    Stmt(Statement),
+    Expr(Expression),
 }
 
 fn parse_stmt_or_expr(i: &str) -> IResult<&str, StmtOrExpr> {
@@ -514,7 +524,7 @@ fn parse_stmt_or_expr(i: &str) -> IResult<&str, StmtOrExpr> {
         return Ok((
             i,
             if semi.is_some() {
-                StmtOrExpr::Stmt(Stmt::Expr(expr))
+                StmtOrExpr::Stmt(Statement::Expression(expr))
             } else {
                 StmtOrExpr::Expr(expr)
             },
@@ -539,18 +549,12 @@ fn parse_stmt_or_expr(i: &str) -> IResult<&str, StmtOrExpr> {
 
 fn parse_function(i: &str) -> IResult<&str, Function> {
     let (i, _) = ws(keyword("fn")).parse(i)?;
-    let (i, name) = cut(identifier).parse(i)?;
+    let (i, identifier) = cut(parse_identifier).parse(i)?;
     let (i, _) = ws(cut(char('('))).parse(i)?;
-    let (i, params) = separated_list0(ws(char(',')), identifier).parse(i)?;
+    let (i, arguments) = separated_list0(ws(char(',')), parse_identifier).parse(i)?;
     let (i, _) = ws(cut(char(')'))).parse(i)?;
-    let (i, block) = parse_block(i)?;
-
-    let mut body = block.statements;
-    if let Some(value) = block.value {
-        body.push(Stmt::Return(Some(*value)));
-    }
-
-    Ok((i, Function { name, params, body }))
+    let (i, body) = parse_block(i)?;
+    Ok((i, Function { identifier, arguments, body }))
 }
 
 pub fn parse_program(i: &str) -> IResult<&str, Program> {

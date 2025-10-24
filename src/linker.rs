@@ -1,16 +1,6 @@
+use crate::bytecode::{FunctionBytecode, Instruction, ProgramBytecode};
 use std::collections::{BTreeMap, HashMap, btree_map::Entry};
 use thiserror::Error;
-
-use crate::{FunctionBytecode, bytecode::Instruction};
-
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
-#[allow(unused)]
-pub struct ProgramBytecode {
-    functions: HashMap<String, u32>,
-    instructions: Vec<Instruction>,
-}
 
 pub struct Linker {
     functions: BTreeMap<String, FunctionBytecode>,

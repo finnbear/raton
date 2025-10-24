@@ -9,7 +9,7 @@ use test::Bencher;
 #[allow(unused)]
 fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
-    let mut vm = Vm::new().with_type_casting();
+    let mut vm = VirtualMachine::new().with_type_casting();
     vm.load_program(&ast).unwrap();
 
     b.iter(|| {

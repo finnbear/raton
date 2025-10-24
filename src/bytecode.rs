@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::{
     Value,
-    ast::{BinaryOp, UnaryOp},
+    ast::{BinaryOperator, UnaryOperator},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,9 +17,9 @@ pub enum Instruction {
     /// Store a value popped from the stack into the indexed variable.
     StoreVar(u8),
     /// Push the result of the unary operation on a value popped from the stack.
-    UnaryOp(UnaryOp),
+    UnaryOp(UnaryOperator),
     /// Push the result of the binary operation on two values popped from the stack.
-    BinaryOp(BinaryOp),
+    BinaryOp(BinaryOperator),
     /// Jump to the indexed instruction.
     Jump(u32),
     /// Jump to the indexed instruction if a value peeked from the stack is the bool 'false'.
@@ -29,4 +31,22 @@ pub enum Instruction {
     Return,
     /// Discard an item popped from the stack.
     Pop,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
+#[non_exhaustive]
+pub struct FunctionBytecode {
+    pub instructions: Vec<Instruction>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
+#[allow(unused)]
+#[non_exhaustive]
+pub struct ProgramBytecode {
+    pub functions: HashMap<String, u32>,
+    pub instructions: Vec<Instruction>,
 }

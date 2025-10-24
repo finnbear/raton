@@ -66,7 +66,7 @@ impl Value {
     }
 
     #[cfg(feature = "bool_type")]
-    pub fn as_bool(&self) -> Result<bool, RuntimeError> {
+    pub(crate) fn as_bool(&self) -> Result<bool, RuntimeError> {
         match self {
             Value::Bool(b) => Ok(*b),
             _ => Err(RuntimeError::TypeMismatch {
