@@ -51,8 +51,8 @@ jobs:
           crate: cargo-fuzz
           locked: false
       - name: Fuzz (code generator)
-        run: RUST_BACKTRACE=1 cargo fuzz run code_generator -- -max_total_time=300 -timeout=5
+        run: RUST_BACKTRACE=1 cargo fuzz run code_generator -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5
       - name: Fuzz (virtual machine)
-        run: RUST_BACKTRACE=1 cargo fuzz run virtual_machine -- -max_total_time=300 -timeout=5
+        run: RUST_BACKTRACE=1 cargo fuzz run virtual_machine -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5
       - name: Fuzz (parser)
-        run: RUST_BACKTRACE=1 cargo fuzz run fuzz -- -max_total_time=300 -timeout=5
+        run: RUST_BACKTRACE=1 cargo fuzz run fuzz -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5
