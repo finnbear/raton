@@ -1,6 +1,6 @@
 use crate::prelude::*;
 extern crate test;
-use test::Bencher;
+use test::{black_box, Bencher};
 
 // Oct 23 2025
 // test benches::fib_28             ... bench: 149,497,373.70 ns/iter (+/- 9,979,934.13)
@@ -22,6 +22,10 @@ use test::Bencher;
 // test benches::fib_28             ... bench:  57,441,287.50 ns/iter (+/- 10,581,056.86)
 // test benches::million_iterations ... bench:  39,619,527.30 ns/iter (+/- 7,884,078.85)
 
+// Oct 24 2025 (after looping fib_28 5 times)
+// test benches::fib_28             ... bench: 305,698,143.70 ns/iter (+/- 88,536,045.25)
+// test benches::million_iterations ... bench:  41,642,978.90 ns/iter (+/- 9,144,916.79)
+
 #[allow(unused)]
 fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: &[Value], expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
@@ -29,7 +33,9 @@ fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: &[Value], expecte
     let mut vm = VirtualMachine::new(&program).with_type_casting();
 
     b.iter(|| {
-        let result = vm.execute(func, args).unwrap();
+        let result = black_box(&mut vm)
+            .execute(black_box(func), black_box(args))
+            .unwrap();
         assert_eq!(result, expected);
     })
 }
@@ -50,7 +56,11 @@ fn million_iterations(b: &mut Bencher) {
 }
 
 #[bench]
-#[cfg(all(feature = "if_expression", feature = "i32_type"))]
+#[cfg(all(
+    feature = "if_expression",
+    feature = "while_loop",
+    feature = "i32_type"
+))]
 fn fib_28(b: &mut test::Bencher) {
     let src = r#"
         fn fib(n) {
@@ -60,7 +70,17 @@ fn fib_28(b: &mut test::Bencher) {
                 fib(n-1) + fib(n-2)
             }
         }
+
+        fn five(n) {
+            let i = 0;
+            let ret = 0;
+            while (i < 5) {
+                ret = fib(n);
+                i = i + 1;
+            }
+            ret
+        }
     "#;
 
-    bench_execute(b, src, "fib", &[Value::I32(28)], Value::I32(317811));
+    bench_execute(b, src, "five", &[Value::I32(28)], Value::I32(317811));
 }

@@ -328,6 +328,8 @@ impl CodeGenerator {
 
         self.instructions[ip as usize] = Instruction::AllocVars(self.variable_count);
 
+        self.variable_stack.clear();
+
         Ok(())
     }
 

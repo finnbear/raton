@@ -19,8 +19,10 @@ fn target(src: &str) {
         .generate_program(&ast)
     {
         Ok(p) => p,
-        Err(_err) => {
-            // TODO.
+        Err(err) => {
+            if matches!(err, CompileError::Internal) {
+                panic!("ICE");
+            }
             return;
         }
     };

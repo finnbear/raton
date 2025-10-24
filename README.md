@@ -68,6 +68,10 @@ Unfinished, do not use in production.
 - [ ] Proper error handling
 - [ ] Proper error messages
 
+## Performance
+
+Ratón takes ~0.3s on `Fibonacci` and ~0.04s on `1M Loop` (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
+
 ## Security
 
 Ratón is designed to handle untrusted or malicious source code, asts, or bytecode
