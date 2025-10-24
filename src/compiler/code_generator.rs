@@ -7,12 +7,13 @@ pub struct CodeGenerator {
     public_functions: HashMap<Identifier, PublicFunction>,
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
-    variable_count: u8,
+    variable_count: u16,
     /// (start, breaks, continues)
     #[cfg(feature = "while_loop")]
     loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
     max_instructions: u32,
     max_depth: u32,
+    max_local_variables: u16,
 }
 
 impl Default for CodeGenerator {
@@ -31,6 +32,8 @@ pub enum CompileError {
     Shadowing { name: Identifier },
     #[error("max instructions exceeded")]
     MaxInstructionsExceeded,
+    #[error("max local variables exceeded")]
+    MaxLocalVariablesExceeded,
     #[error("max depth exceeded")]
     MaxDepthExceeded,
     #[error("arguments mismatch")]
@@ -48,19 +51,32 @@ impl CodeGenerator {
             variable_count: 0,
             #[cfg(feature = "while_loop")]
             loop_stack: Vec::new(),
-            max_instructions: u32::MAX - 1,
             public_functions: Default::default(),
+            max_instructions: 1_000_000,
             max_depth: 50,
+            max_local_variables: 100,
         }
     }
 
     /// Return a [`CompileError`] if there would be more than `max` instructions.
+    ///
+    /// Default: 1 million
     pub fn with_max_instructions(mut self, max: u32) -> Self {
-        self.max_instructions = max.min(u32::MAX - 1);
+        self.max_instructions = max;
+        self
+    }
+
+    /// Return a [`CompileError`] if there would be more than this many varaibles in a function.
+    ///
+    /// Default: 100
+    pub fn with_max_local_variables(mut self, max: u16) -> Self {
+        self.max_local_variables = max;
         self
     }
 
     /// Return a [`CompileError`] if nesting depth of expressions/statements exceeds this.
+    ///
+    /// Default: 50
     pub fn with_max_depth(mut self, max: u32) -> Self {
         self.max_depth = max;
         self
@@ -99,27 +115,30 @@ impl CodeGenerator {
         }
     }
 
-    fn variable_index(&mut self, name: &Identifier) -> Result<u8, CompileError> {
+    fn variables_so_far(&self) -> usize {
+        self.variable_stack
+            .iter()
+            .flat_map(|vars| vars.iter())
+            .count()
+    }
+
+    fn variable_index(&mut self, name: &Identifier) -> Result<u16, CompileError> {
         let reverse_index = self
             .variable_stack
             .iter()
             .rev()
-            .flat_map(|vars| vars.iter().rev())
+            .flat_map(|vars: &Vec<String>| vars.iter().rev())
             .position(|v| v == name)
             .ok_or(CompileError::UndefinedVariable { name: name.clone() })?;
-        let len = self
-            .variable_stack
-            .iter()
-            .flat_map(|vars| vars.iter())
-            .count();
+        let len = self.variables_so_far();
 
-        self.variable_count = self.variable_count.max(len as u8);
+        self.variable_count = self.variable_count.max(len as u16);
 
-        Ok((len - 1 - reverse_index) as u8)
+        Ok((len - 1 - reverse_index) as u16)
     }
 
     fn generate_block(&mut self, block: &BlockExpression) -> Result<(), CompileError> {
-        if self.variable_stack.len() == self.max_depth as usize {
+        if self.variable_stack.len() >= self.max_depth as usize {
             return Err(CompileError::MaxDepthExceeded);
         }
         self.variable_stack.push(Vec::new());
@@ -238,9 +257,10 @@ impl CodeGenerator {
                     return Err(CompileError::Shadowing {
                         name: identifier.clone(),
                     });
+                } else if self.variables_so_far() >= self.max_local_variables as usize {
+                    return Err(CompileError::MaxLocalVariablesExceeded);
                 }
                 if let Some(last) = self.variable_stack.last_mut() {
-                    // TODO.
                     last.push(identifier.clone());
 
                     let index = self
@@ -265,16 +285,16 @@ impl CodeGenerator {
             }
             #[cfg(feature = "while_loop")]
             Statement::While(WhileLoop { condition, body }) => {
-                let loop_start = self.current_addr();
-                self.loop_stack.push((loop_start, Vec::new(), Vec::new()));
+                if self.variable_stack.len() >= self.max_depth as usize {
+                    return Err(CompileError::MaxDepthExceeded);
+                }
 
+                let loop_start = self.current_addr();
                 self.generate_expr(condition)?;
                 let jump_end = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
 
-                if self.variable_stack.len() == self.max_depth as usize {
-                    return Err(CompileError::MaxDepthExceeded);
-                }
+                self.loop_stack.push((loop_start, Vec::new(), Vec::new()));
                 self.variable_stack.push(Vec::new());
 
                 for stmt in body {

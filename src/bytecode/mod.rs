@@ -11,13 +11,13 @@ use std::collections::HashMap;
 #[non_exhaustive]
 pub enum Instruction {
     /// Allocate this many variables on the stack.
-    AllocVariables(u8),
+    AllocVariables(u16),
     /// Push the constant onto the stack.
     LoadConstant(Value),
     /// Push the indexed variable's value onto the stack.
-    LoadVariable(u8),
+    LoadVariable(u16),
     /// Store a value popped from the stack into the indexed variable.
-    StoreVariable(u8),
+    StoreVariable(u16),
     /// Push the result of the unary operation on a value popped from the stack.
     UnaryOperator(UnaryOperator),
     /// Push the result of the binary operation on two values popped from the stack.

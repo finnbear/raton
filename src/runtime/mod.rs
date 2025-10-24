@@ -25,7 +25,7 @@ pub enum RuntimeError {
     #[error("undefined function ({name})")]
     UndefinedFunction { name: String },
     #[error("undefined variable (index {index})")]
-    UndefinedVariable { index: u8 },
+    UndefinedVariable { index: u16 },
     #[error("invalid operand ({actual})")]
     InvalidOperand { actual: Type },
     #[error("invalid argument(s)")]

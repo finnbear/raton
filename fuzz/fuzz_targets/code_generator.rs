@@ -31,7 +31,7 @@ fn target(ast: Program) {
         .collect::<Vec<_>>()
     {
         let result = vm.execute(&func, &[Value::I32(5)]);
-        if matches!(result, Err(RuntimeError::StackOverflow)) {
+        if matches!(result, Err(RuntimeError::StackUnderflow)) {
             panic!("IRE");
         }
     }
