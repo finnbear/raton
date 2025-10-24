@@ -1,14 +1,23 @@
-use crate::{BinaryOperator, Value, ast::*, bytecode::*};
+use std::collections::HashMap;
+
+use crate::{ast::*, bytecode::*, BinaryOperator, Value};
 use thiserror::Error;
 
 /// Turns an abstract syntax tree into bytecode.
 pub struct CodeGenerator {
+    public_functions: HashMap<Identifier, u32>,
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
     /// (start, breaks, continues)
     #[cfg(feature = "while_loop")]
     loop_stack: Vec<(u32, Vec<u32>, Vec<u32>)>,
     max_instructions: u32,
+}
+
+impl Default for CodeGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// An error produced when compiling a program into bytecode.
@@ -32,6 +41,7 @@ impl CodeGenerator {
             #[cfg(feature = "while_loop")]
             loop_stack: Vec::new(),
             max_instructions: u32::MAX - 1,
+            public_functions: Default::default(),
         }
     }
 
@@ -288,7 +298,9 @@ impl CodeGenerator {
         Ok(())
     }
 
-    pub fn generate_function(mut self, func: &Function) -> Result<FunctionBytecode, CompileError> {
+    fn generate_function(&mut self, func: &Function) -> Result<(), CompileError> {
+        self.public_functions
+            .insert(func.identifier.clone(), self.instructions.len() as u32);
         self.variable_stack.push(Vec::new());
         for arg in &func.arguments {
             self.variable_stack.last_mut().unwrap().push(arg.clone());
@@ -297,7 +309,15 @@ impl CodeGenerator {
         if !matches!(self.instructions.last(), Some(Instruction::Return)) {
             self.emit(Instruction::Return)?;
         }
-        Ok(FunctionBytecode {
+        Ok(())
+    }
+
+    pub fn generate_program(mut self, program: &Program) -> Result<ProgramBytecode, CompileError> {
+        for function in &program.functions {
+            self.generate_function(function)?;
+        }
+        Ok(ProgramBytecode {
+            public_functions: self.public_functions,
             instructions: self.instructions,
         })
     }

@@ -1,11 +1,6 @@
 //! Run compiled bytecode.
 
-use crate::{
-    BinaryOperator, Type, UnaryOperator, Value,
-    ast::Program,
-    bytecode::*,
-    compiler::{CodeGenerator, CompileError},
-};
+use crate::{bytecode::*, BinaryOperator, Type, UnaryOperator, Value};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -13,8 +8,8 @@ use thiserror::Error;
 pub type HostFunction = Box<dyn Fn(&[Value]) -> Result<Value, RuntimeError>>;
 
 /// Interprets bytecode.
-pub struct VirtualMachine {
-    functions: HashMap<String, Vec<Instruction>>,
+pub struct VirtualMachine<'a> {
+    program: &'a ProgramBytecode,
     host_functions: HashMap<String, HostFunction>,
     instruction_budget: Option<u32>,
     max_stack_depth: Option<u8>,
@@ -44,12 +39,14 @@ pub enum RuntimeError {
     StackOverflow,
     #[error("instruction budget exceeded")]
     InstructionBudgetExceeded,
+    #[error("bytecode ended abruptly")]
+    BytecodeEndedAbruptly,
 }
 
-impl VirtualMachine {
-    pub fn new() -> Self {
+impl<'a> VirtualMachine<'a> {
+    pub fn new(program: &'a ProgramBytecode) -> Self {
         Self {
-            functions: HashMap::new(),
+            program,
             host_functions: HashMap::new(),
             instruction_budget: None,
             max_stack_depth: None,
@@ -157,281 +154,262 @@ impl VirtualMachine {
         self
     }
 
-    pub fn load_program(&mut self, program: &Program) -> Result<(), CompileError> {
-        for func in &program.functions {
-            let bytecode = CodeGenerator::new().generate_function(func)?;
-            self.functions
-                .insert(func.identifier.clone(), bytecode.instructions);
-        }
-        Ok(())
-    }
-
-    pub fn with_compiled_function(&mut self, name: String, function: FunctionBytecode) {
-        self.functions.insert(name, function.instructions);
-    }
-
     pub fn execute(&self, func_name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
         let mut stack: Vec<Value> = Vec::new();
         let mut variables = args;
-        let mut pc = 0u32;
+        let mut pc = *self
+            .program
+            .public_functions
+            .get(func_name)
+            .ok_or_else(|| RuntimeError::UndefinedFunction {
+                name: func_name.to_owned(),
+            })?;
         let mut instruction_budget = self.instruction_budget;
         // let mut stack_budget = self.max_stack_depth;
 
-        if let Some(instructions) = self.functions.get(func_name) {
-            while let Some(instruction) = instructions.get(pc as usize) {
-                if let Some(instruction_budget) = &mut instruction_budget {
-                    if let Some(next) = instruction_budget.checked_sub(1) {
-                        *instruction_budget = next;
-                    } else {
-                        return Err(RuntimeError::InstructionBudgetExceeded);
-                    }
-                }
-                match instruction {
-                    Instruction::LoadConst(val) => {
-                        stack.push(val.clone());
-                        pc += 1;
-                    }
-                    &Instruction::LoadVar(index) => {
-                        let val = variables
-                            .get(index as usize)
-                            .ok_or_else(|| RuntimeError::UndefinedVariable { index })?;
-                        stack.push(val.clone());
-                        pc += 1;
-                    }
-                    &Instruction::StoreVar(index) => {
-                        let val = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        while variables.len() < index as usize + 1 {
-                            variables.push(Value::Null);
-                        }
-                        *variables
-                            .get_mut(index as usize)
-                            .ok_or_else(|| RuntimeError::UndefinedVariable { index })? = val;
-                        pc += 1;
-                    }
-                    Instruction::UnaryOp(op) => {
-                        let operand = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        let _result = match op {
-                            #[cfg(feature = "bool_type")]
-                            UnaryOperator::Not => {
-                                let b = operand.as_bool()?;
-                                Value::Bool(!b)
-                            }
-                            UnaryOperator::Neg => match operand {
-                                #[cfg(feature = "i32_type")]
-                                Value::I32(i) => Value::I32(
-                                    i.checked_neg().ok_or(RuntimeError::IntegerOverflow)?,
-                                ),
-                                #[cfg(feature = "f32_type")]
-                                Value::F32(f) => Value::F32(-f),
-                                _ => {
-                                    return Err(RuntimeError::InvalidOperand {
-                                        actual: operand.type_of(),
-                                    });
-                                }
-                            },
-                        };
-                        #[allow(unreachable_code)]
-                        stack.push(_result);
-                        pc += 1;
-                    }
-                    Instruction::BinaryOp(op) => {
-                        let right = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        let left = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        let _result = match op {
-                            BinaryOperator::Add => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::I32(
-                                    l.checked_add(r).ok_or(RuntimeError::IntegerOverflow)?,
-                                ),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::F32(l + r),
-                                #[cfg(feature = "string_type")]
-                                (Value::String(l), Value::String(r)) => {
-                                    Value::String(format!("{l}{r}"))
-                                }
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            BinaryOperator::Subtract => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::I32(
-                                    l.checked_sub(r).ok_or(RuntimeError::IntegerOverflow)?,
-                                ),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::F32(l - r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            BinaryOperator::Multiply => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::I32(
-                                    l.checked_mul(r).ok_or(RuntimeError::IntegerOverflow)?,
-                                ),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::F32(l * r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            BinaryOperator::Divide => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => {
-                                    if r == 0 {
-                                        return Err(RuntimeError::IntegerDivisionByZero);
-                                    }
-                                    Value::I32(
-                                        l.checked_div(r).ok_or(RuntimeError::IntegerOverflow)?,
-                                    )
-                                }
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::F32(l / r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            BinaryOperator::Modulo => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => {
-                                    if r == 0 {
-                                        return Err(RuntimeError::IntegerDivisionByZero);
-                                    }
-                                    Value::I32(l % r)
-                                }
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::F32(l % r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::Equal => Value::Bool(left == right),
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::NotEqual => Value::Bool(left != right),
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::LessThan => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::Bool(l < r),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::Bool(l < r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::LessThanOrEqual => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::Bool(l <= r),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::Bool(l <= r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::GreaterThan => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::Bool(l > r),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::Bool(l > r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::GreaterThanOrEqual => match (&left, &right) {
-                                #[cfg(feature = "i32_type")]
-                                (&Value::I32(l), &Value::I32(r)) => Value::Bool(l >= r),
-                                #[cfg(feature = "f32_type")]
-                                (&Value::F32(l), &Value::F32(r)) => Value::Bool(l >= r),
-                                _ => {
-                                    return Err(RuntimeError::TypeMismatch {
-                                        expected: left.type_of(),
-                                        actual: right.type_of(),
-                                    });
-                                }
-                            },
-                            #[cfg(feature = "bool_type")]
-                            BinaryOperator::And | BinaryOperator::Or => {
-                                unreachable!("And/Or should have been desugared");
-                            }
-                        };
-                        #[allow(unreachable_code)]
-                        stack.push(_result);
-                        pc += 1;
-                    }
-                    Instruction::Jump(target) => {
-                        pc = *target;
-                    }
-                    #[cfg(feature = "bool_type")]
-                    Instruction::JumpIfFalse(target) => {
-                        let cond = stack.last().ok_or(RuntimeError::StackUnderflow)?;
-                        let cond_val = cond.as_bool()?;
-                        if !cond_val {
-                            pc = *target;
-                        } else {
-                            pc += 1;
-                        }
-                    }
-                    Instruction::Call(name, arg_count) => {
-                        let mut call_args = Vec::new();
-                        for _ in 0..*arg_count {
-                            call_args.push(stack.pop().ok_or(RuntimeError::StackUnderflow)?);
-                        }
-                        call_args.reverse();
-
-                        let result = if let Some(host_fn) = self.host_functions.get(name) {
-                            host_fn(&call_args)?
-                        } else if self.functions.contains_key(name) {
-                            // TODO: don't use host stack(?)
-                            self.execute(name, call_args)?
-                        } else {
-                            return Err(RuntimeError::UndefinedFunction { name: name.clone() });
-                        };
-
-                        stack.push(result);
-                        pc += 1;
-                    }
-                    Instruction::Return => {
-                        return stack.pop().ok_or(RuntimeError::StackUnderflow);
-                    }
-                    Instruction::Pop => {
-                        stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                        pc += 1;
-                    }
+        while let Some(instruction) = self.program.instructions.get(pc as usize) {
+            if let Some(instruction_budget) = &mut instruction_budget {
+                if let Some(next) = instruction_budget.checked_sub(1) {
+                    *instruction_budget = next;
+                } else {
+                    return Err(RuntimeError::InstructionBudgetExceeded);
                 }
             }
+            match instruction {
+                Instruction::LoadConst(val) => {
+                    stack.push(val.clone());
+                    pc += 1;
+                }
+                &Instruction::LoadVar(index) => {
+                    let val = variables
+                        .get(index as usize)
+                        .ok_or_else(|| RuntimeError::UndefinedVariable { index })?;
+                    stack.push(val.clone());
+                    pc += 1;
+                }
+                &Instruction::StoreVar(index) => {
+                    let val = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
+                    while variables.len() < index as usize + 1 {
+                        variables.push(Value::Null);
+                    }
+                    *variables
+                        .get_mut(index as usize)
+                        .ok_or_else(|| RuntimeError::UndefinedVariable { index })? = val;
+                    pc += 1;
+                }
+                Instruction::UnaryOp(op) => {
+                    let operand = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
+                    let _result = match op {
+                        #[cfg(feature = "bool_type")]
+                        UnaryOperator::Not => {
+                            let b = operand.as_bool()?;
+                            Value::Bool(!b)
+                        }
+                        UnaryOperator::Neg => match operand {
+                            #[cfg(feature = "i32_type")]
+                            Value::I32(i) => {
+                                Value::I32(i.checked_neg().ok_or(RuntimeError::IntegerOverflow)?)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            Value::F32(f) => Value::F32(-f),
+                            _ => {
+                                return Err(RuntimeError::InvalidOperand {
+                                    actual: operand.type_of(),
+                                });
+                            }
+                        },
+                    };
+                    #[allow(unreachable_code)]
+                    stack.push(_result);
+                    pc += 1;
+                }
+                Instruction::BinaryOp(op) => {
+                    let right = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
+                    let left = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
+                    let _result = match op {
+                        BinaryOperator::Add => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => {
+                                Value::I32(l.checked_add(r).ok_or(RuntimeError::IntegerOverflow)?)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::F32(l + r),
+                            #[cfg(feature = "string_type")]
+                            (Value::String(l), Value::String(r)) => {
+                                Value::String(format!("{l}{r}"))
+                            }
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        BinaryOperator::Subtract => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => {
+                                Value::I32(l.checked_sub(r).ok_or(RuntimeError::IntegerOverflow)?)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::F32(l - r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        BinaryOperator::Multiply => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => {
+                                Value::I32(l.checked_mul(r).ok_or(RuntimeError::IntegerOverflow)?)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::F32(l * r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        BinaryOperator::Divide => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => {
+                                if r == 0 {
+                                    return Err(RuntimeError::IntegerDivisionByZero);
+                                }
+                                Value::I32(l.checked_div(r).ok_or(RuntimeError::IntegerOverflow)?)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::F32(l / r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        BinaryOperator::Modulo => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => {
+                                if r == 0 {
+                                    return Err(RuntimeError::IntegerDivisionByZero);
+                                }
+                                Value::I32(l % r)
+                            }
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::F32(l % r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::Equal => Value::Bool(left == right),
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::NotEqual => Value::Bool(left != right),
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::LessThan => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => Value::Bool(l < r),
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::Bool(l < r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::LessThanOrEqual => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => Value::Bool(l <= r),
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::Bool(l <= r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::GreaterThan => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => Value::Bool(l > r),
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::Bool(l > r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::GreaterThanOrEqual => match (&left, &right) {
+                            #[cfg(feature = "i32_type")]
+                            (&Value::I32(l), &Value::I32(r)) => Value::Bool(l >= r),
+                            #[cfg(feature = "f32_type")]
+                            (&Value::F32(l), &Value::F32(r)) => Value::Bool(l >= r),
+                            _ => {
+                                return Err(RuntimeError::TypeMismatch {
+                                    expected: left.type_of(),
+                                    actual: right.type_of(),
+                                });
+                            }
+                        },
+                        #[cfg(feature = "bool_type")]
+                        BinaryOperator::And | BinaryOperator::Or => {
+                            unreachable!("And/Or should have been desugared");
+                        }
+                    };
+                    #[allow(unreachable_code)]
+                    stack.push(_result);
+                    pc += 1;
+                }
+                Instruction::Jump(target) => {
+                    pc = *target;
+                }
+                #[cfg(feature = "bool_type")]
+                Instruction::JumpIfFalse(target) => {
+                    let cond = stack.last().ok_or(RuntimeError::StackUnderflow)?;
+                    let cond_val = cond.as_bool()?;
+                    if !cond_val {
+                        pc = *target;
+                    } else {
+                        pc += 1;
+                    }
+                }
+                Instruction::Call(name, arg_count) => {
+                    let mut call_args = Vec::new();
+                    for _ in 0..*arg_count {
+                        call_args.push(stack.pop().ok_or(RuntimeError::StackUnderflow)?);
+                    }
+                    call_args.reverse();
 
-            Ok(Value::Null)
-        } else {
-            Err(RuntimeError::UndefinedFunction {
-                name: func_name.to_owned(),
-            })
+                    let result = if let Some(host_fn) = self.host_functions.get(name) {
+                        host_fn(&call_args)?
+                    } else {
+                        self.execute(name, call_args)?
+                    };
+
+                    stack.push(result);
+                    pc += 1;
+                }
+                Instruction::Return => {
+                    return stack.pop().ok_or(RuntimeError::StackUnderflow);
+                }
+                Instruction::Pop => {
+                    stack.pop().ok_or(RuntimeError::StackUnderflow)?;
+                    pc += 1;
+                }
+            }
         }
+        Err(RuntimeError::BytecodeEndedAbruptly)
     }
 }

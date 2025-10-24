@@ -6,11 +6,15 @@ use test::Bencher;
 // test benches::fib_28             ... bench: 149,497,373.70 ns/iter (+/- 9,979,934.13)
 // test benches::million_iterations ... bench:  44,039,739.20 ns/iter (+/- 10,533,766.51)
 
+// Oct 24 2025
+// test benches::fib_28             ... bench: 137,125,511 ns/iter (+/- 19,572,563)
+// test benches::million_iterations ... bench:  44,711,787 ns/iter (+/- 5,496,146)
+
 #[allow(unused)]
 fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
-    let mut vm = VirtualMachine::new().with_type_casting();
-    vm.load_program(&ast).unwrap();
+    let program = CodeGenerator::new().generate_program(&ast).unwrap();
+    let mut vm = VirtualMachine::new(&program).with_type_casting();
 
     b.iter(|| {
         let result = vm.execute(func, args.clone()).unwrap();

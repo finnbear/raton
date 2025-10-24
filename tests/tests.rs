@@ -4,8 +4,8 @@ use std::time::Instant;
 
 fn assert_execute(src: &str, func: &str, args: Vec<Value>, expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
-    let mut vm = VirtualMachine::new().with_type_casting();
-    vm.load_program(&ast).unwrap();
+    let program = CodeGenerator::new().generate_program(&ast).unwrap();
+    let vm = VirtualMachine::new(&program).with_type_casting();
 
     let result = vm.execute(func, args).unwrap();
     assert_eq!(result, expected);
@@ -103,8 +103,7 @@ fn undefined() {
     "#;
 
     let ast = Parser::new().parse(src).unwrap();
-    let mut vm = VirtualMachine::new().with_type_casting();
-    let result = vm.load_program(&ast).unwrap_err();
+    let result = CodeGenerator::new().generate_program(&ast).unwrap_err();
     assert!(matches!(result, CompileError::UndefinedVariable { .. }));
 }
 
@@ -120,8 +119,7 @@ fn scope() {
     "#;
 
     let ast = Parser::new().parse(src).unwrap();
-    let mut vm = VirtualMachine::new().with_type_casting();
-    let result = vm.load_program(&ast).unwrap_err();
+    let result = CodeGenerator::new().generate_program(&ast).unwrap_err();
     assert!(matches!(result, CompileError::UndefinedVariable { .. }));
 }
 

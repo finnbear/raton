@@ -1,15 +1,15 @@
-use crate::{BinaryOperator, UnaryOperator, Value, ast::*};
+use crate::{ast::*, BinaryOperator, UnaryOperator, Value};
 #[allow(unused_imports)]
 use nom::{
-    IResult, Parser as NomParser,
     branch::alt,
     bytes::complete::{tag, take_until, take_while1},
     character::complete::{alpha1, alphanumeric1, anychar, char, digit1, multispace0},
     combinator::{cut, eof, map, not, opt, peek, recognize, value, verify},
     multi::{many0, separated_list0},
     sequence::{delimited, pair, preceded, terminated},
+    IResult, Parser as NomParser,
 };
-use nom_language::precedence::{Assoc, Operation, binary_op, precedence, unary_op};
+use nom_language::precedence::{binary_op, precedence, unary_op, Assoc, Operation};
 use std::fmt::{self, Debug, Display, Write};
 use std::marker::PhantomData;
 use std::ops::Range;
