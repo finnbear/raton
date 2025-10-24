@@ -212,7 +212,10 @@ impl CodeGenerator {
                 for argument in arguments {
                     self.generate_expr(argument)?;
                 }
-                self.emit(Instruction::CallByName(name.clone(), arguments.len() as u8))?;
+                self.emit(Instruction::CallByName(
+                    name.clone(),
+                    arguments.len() as u16,
+                ))?;
             }
             #[cfg(feature = "if_expression")]
             Expression::If(IfExpression {
@@ -349,13 +352,16 @@ impl CodeGenerator {
                 name: func.identifier.clone(),
             });
         }
+        if func.arguments.len() > self.max_local_variables as usize {
+            return Err(CompileError::MaxLocalVariablesExceeded);
+        }
         self.variable_count = 0;
         let ip = self.emit(Instruction::AllocVariables(0))?;
         self.public_functions.insert(
             func.identifier.clone(),
             PublicFunction {
                 address: ip,
-                arguments: func.arguments.len() as u8,
+                arguments: func.arguments.len() as u16,
             },
         );
 

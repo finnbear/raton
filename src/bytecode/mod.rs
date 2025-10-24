@@ -28,9 +28,9 @@ pub enum Instruction {
     #[cfg(feature = "bool_type")]
     JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
-    CallByName(String, u8),
+    CallByName(String, u16),
     /// Call the function at the given address with the given number of arguments.
-    CallByAddress(u32, u8),
+    CallByAddress(u32, u16),
     /// Return from the current function.
     Return,
     /// Discard an item popped from the stack.
@@ -63,5 +63,5 @@ pub struct PublicFunction {
     /// The address of the first instruction of the function.
     pub address: u32,
     /// The number of arguments of the function.
-    pub arguments: u8,
+    pub arguments: u16,
 }
