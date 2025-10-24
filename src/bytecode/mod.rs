@@ -11,17 +11,17 @@ use std::collections::HashMap;
 #[non_exhaustive]
 pub enum Instruction {
     /// Allocate this many variables on the stack.
-    AllocVars(u8),
+    AllocVariables(u8),
     /// Push the constant onto the stack.
-    LoadConst(Value),
+    LoadConstant(Value),
     /// Push the indexed variable's value onto the stack.
-    LoadVar(u8),
+    LoadVariable(u8),
     /// Store a value popped from the stack into the indexed variable.
-    StoreVar(u8),
+    StoreVariable(u8),
     /// Push the result of the unary operation on a value popped from the stack.
-    UnaryOp(UnaryOperator),
+    UnaryOperator(UnaryOperator),
     /// Push the result of the binary operation on two values popped from the stack.
-    BinaryOp(BinaryOperator),
+    BinaryOperator(BinaryOperator),
     /// Jump to the indexed instruction.
     Jump(u32),
     /// Jump to the indexed instruction if a value peeked from the stack is the bool 'false'.
@@ -29,8 +29,8 @@ pub enum Instruction {
     JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
     CallByName(String, u8),
-    /// Call the function at the given instruction pointer with the given number of arguments.
-    CallByIp(u32, u8),
+    /// Call the function at the given address with the given number of arguments.
+    CallByAddress(u32, u8),
     /// Return from the current function.
     Return,
     /// Discard an item popped from the stack.

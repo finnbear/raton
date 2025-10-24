@@ -9,7 +9,7 @@ pub enum UnaryOperator {
     #[cfg(feature = "bool_type")]
     Not,
     /// `-`
-    Neg,
+    Negate,
 }
 
 /// An operator that takes two operands.

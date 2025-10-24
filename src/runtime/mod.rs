@@ -192,7 +192,7 @@ impl<'a> VirtualMachine<'a> {
                 }
             }
             match instruction {
-                Instruction::AllocVars(n) => {
+                Instruction::AllocVariables(n) => {
                     let relative_exlusive_index =
                         call_stack.last_mut().map(|f| f.first_variable).unwrap_or(0) as usize
                             + *n as usize;
@@ -201,11 +201,11 @@ impl<'a> VirtualMachine<'a> {
                     }
                     pc += 1;
                 }
-                Instruction::LoadConst(val) => {
+                Instruction::LoadConstant(val) => {
                     self.stack.push(val.clone());
                     pc += 1;
                 }
-                &Instruction::LoadVar(index) => {
+                &Instruction::LoadVariable(index) => {
                     let relative_index =
                         call_stack.last_mut().map(|f| f.first_variable).unwrap_or(0) as usize
                             + index as usize;
@@ -216,7 +216,7 @@ impl<'a> VirtualMachine<'a> {
                     self.stack.push(val.clone());
                     pc += 1;
                 }
-                &Instruction::StoreVar(index) => {
+                &Instruction::StoreVariable(index) => {
                     let val = self.stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                     let relative_index =
                         call_stack.last_mut().map(|f| f.first_variable).unwrap_or(0) as usize
@@ -227,7 +227,7 @@ impl<'a> VirtualMachine<'a> {
                         .ok_or_else(|| RuntimeError::UndefinedVariable { index })? = val;
                     pc += 1;
                 }
-                Instruction::UnaryOp(op) => {
+                Instruction::UnaryOperator(op) => {
                     let operand = self.stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                     let _result = match op {
                         #[cfg(feature = "bool_type")]
@@ -235,7 +235,7 @@ impl<'a> VirtualMachine<'a> {
                             let b = operand.as_bool()?;
                             Value::Bool(!b)
                         }
-                        UnaryOperator::Neg => match operand {
+                        UnaryOperator::Negate => match operand {
                             #[cfg(feature = "i32_type")]
                             Value::I32(i) => {
                                 Value::I32(i.checked_neg().ok_or(RuntimeError::IntegerOverflow)?)
@@ -253,7 +253,7 @@ impl<'a> VirtualMachine<'a> {
                     self.stack.push(_result);
                     pc += 1;
                 }
-                Instruction::BinaryOp(op) => {
+                Instruction::BinaryOperator(op) => {
                     let right = self.stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                     let left = self.stack.pop().ok_or(RuntimeError::StackUnderflow)?;
                     let _result = match op {
@@ -437,7 +437,7 @@ impl<'a> VirtualMachine<'a> {
                     self.stack.push(result);
                     pc += 1;
                 }
-                Instruction::CallByIp(ip, arg_count) => {
+                Instruction::CallByAddress(ip, arg_count) => {
                     if self.max_stack_depth == Some(call_stack.len() as u8) {
                         return Err(RuntimeError::StackOverflow);
                     }

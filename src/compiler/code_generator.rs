@@ -125,7 +125,7 @@ impl CodeGenerator {
         if let Some(value) = &block.value {
             self.generate_expr(value)?;
         } else {
-            self.emit(Instruction::LoadConst(Value::Null))?;
+            self.emit(Instruction::LoadConstant(Value::Null))?;
         }
         self.variable_stack.pop().ok_or(CompileError::Internal)?;
         Ok(())
@@ -134,15 +134,15 @@ impl CodeGenerator {
     fn generate_expr(&mut self, expr: &Expression) -> Result<(), CompileError> {
         match expr {
             Expression::Literal(val) => {
-                self.emit(Instruction::LoadConst(val.clone()))?;
+                self.emit(Instruction::LoadConstant(val.clone()))?;
             }
             Expression::Variable(name) => {
                 let index = self.variable_index(name)?;
-                self.emit(Instruction::LoadVar(index))?;
+                self.emit(Instruction::LoadVariable(index))?;
             }
             Expression::Unary(UnaryExpression { operand, operator }) => {
                 self.generate_expr(operand)?;
-                self.emit(Instruction::UnaryOp(operator.clone()))?;
+                self.emit(Instruction::UnaryOperator(operator.clone()))?;
             }
             #[cfg(feature = "bool_type")]
             Expression::Binary(BinaryExpression {
@@ -180,7 +180,7 @@ impl CodeGenerator {
             }) => {
                 self.generate_expr(left)?;
                 self.generate_expr(right)?;
-                self.emit(Instruction::BinaryOp(operator.clone()))?;
+                self.emit(Instruction::BinaryOperator(operator.clone()))?;
             }
             Expression::Call(CallExpression {
                 identifier: name,
@@ -211,7 +211,7 @@ impl CodeGenerator {
                 if let Some(else_stmts) = else_branch {
                     self.generate_block(else_stmts)?;
                 } else {
-                    self.emit(Instruction::LoadConst(Value::Null))?;
+                    self.emit(Instruction::LoadConstant(Value::Null))?;
                 }
 
                 let end_addr = self.current_addr();
@@ -244,7 +244,7 @@ impl CodeGenerator {
                         .map_err(|_| CompileError::Internal)?;
 
                     self.generate_expr(expression)?;
-                    self.emit(Instruction::StoreVar(index))?;
+                    self.emit(Instruction::StoreVariable(index))?;
                 }
             }
             Statement::Assign(AssignStatement {
@@ -253,7 +253,7 @@ impl CodeGenerator {
             }) => {
                 let index = self.variable_index(identifier)?;
                 self.generate_expr(expression)?;
-                self.emit(Instruction::StoreVar(index))?;
+                self.emit(Instruction::StoreVariable(index))?;
             }
             Statement::Expression(expr) => {
                 self.generate_expr(expr)?;
@@ -311,7 +311,7 @@ impl CodeGenerator {
                 if let Some(expr) = expr {
                     self.generate_expr(expr)?;
                 } else {
-                    self.emit(Instruction::LoadConst(Value::Null))?;
+                    self.emit(Instruction::LoadConstant(Value::Null))?;
                 }
                 self.emit(Instruction::Return)?;
             }
@@ -326,7 +326,7 @@ impl CodeGenerator {
             });
         }
         self.variable_count = 0;
-        let ip = self.emit(Instruction::AllocVars(0))?;
+        let ip = self.emit(Instruction::AllocVariables(0))?;
         self.public_functions.insert(
             func.identifier.clone(),
             PublicFunction {
@@ -342,7 +342,7 @@ impl CodeGenerator {
             self.emit(Instruction::Return)?;
         }
 
-        self.instructions[ip as usize] = Instruction::AllocVars(self.variable_count);
+        self.instructions[ip as usize] = Instruction::AllocVariables(self.variable_count);
 
         Ok(())
     }
@@ -357,7 +357,7 @@ impl CodeGenerator {
                     if func.arguments != *args {
                         return Err(CompileError::ArgumentsMismatch);
                     }
-                    *instruction = Instruction::CallByIp(func.ip, *args);
+                    *instruction = Instruction::CallByAddress(func.ip, *args);
                 }
             }
         }

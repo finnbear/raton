@@ -370,7 +370,7 @@ fn expression(i: &str) -> IResult<&str, Expression> {
         alt((
             #[cfg(feature = "bool_type")]
             unary_op(2, value(UnaryOperator::Not, ws(tag("!")))),
-            unary_op(2, value(UnaryOperator::Neg, ws(tag("-")))),
+            unary_op(2, value(UnaryOperator::Negate, ws(tag("-")))),
         )),
         // Postfix operators (function calls)
         unary_op(1, function_call),
