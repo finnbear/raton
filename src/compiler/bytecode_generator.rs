@@ -14,6 +14,10 @@ pub struct CodeGenerator {
 /// An error produced when compiling a program into bytecode.
 #[derive(Debug, Error)]
 pub enum CompileError {
+    #[error("undefined variable ({name})")]
+    UndefinedVariable { name: Identifier },
+    #[error("undefined variable ({name})")]
+    Shadowing { name: Identifier },
     #[error("max instructions exceeded")]
     MaxInstructionsExceeded,
     #[error("internal compiler error")]
@@ -69,7 +73,24 @@ impl CodeGenerator {
         }
     }
 
+    fn variable_index(&self, name: &Identifier) -> Result<u8, CompileError> {
+        let reverse_index = self
+            .variable_stack
+            .iter()
+            .rev()
+            .flat_map(|vars| vars.iter().rev())
+            .position(|v| v == name)
+            .ok_or(CompileError::UndefinedVariable { name: name.clone() })?;
+        let len = self
+            .variable_stack
+            .iter()
+            .flat_map(|vars| vars.iter())
+            .count();
+        Ok((len - 1 - reverse_index) as u8)
+    }
+
     fn generate_block(&mut self, block: &BlockExpression) -> Result<(), CompileError> {
+        self.variable_stack.push(Vec::new());
         for stmt in &block.statements {
             self.generate_stmt(stmt)?;
         }
@@ -78,6 +99,7 @@ impl CodeGenerator {
         } else {
             self.emit(Instruction::LoadConst(Value::Null))?;
         }
+        self.variable_stack.pop().ok_or(CompileError::Internal)?;
         Ok(())
     }
 
@@ -87,11 +109,8 @@ impl CodeGenerator {
                 self.emit(Instruction::LoadConst(val.clone()))?;
             }
             Expression::Variable(name) => {
-                if let Some(last) = self.variable_stack.last_mut() {
-                    // TODO.
-                    let index = last.iter().rposition(|v| v == name).unwrap_or(0);
-                    self.emit(Instruction::LoadVar(index as u8))?;
-                }
+                let index = self.variable_index(name)?;
+                self.emit(Instruction::LoadVar(index))?;
             }
             Expression::Unary(UnaryExpression { operand, operator }) => {
                 self.generate_expr(operand)?;
@@ -183,25 +202,30 @@ impl CodeGenerator {
                 identifier,
                 expression,
             }) => {
+                if self.variable_index(identifier).is_ok() {
+                    return Err(CompileError::Shadowing {
+                        name: identifier.clone(),
+                    });
+                }
                 if let Some(last) = self.variable_stack.last_mut() {
-                    let index = last.len();
                     // TODO.
                     last.push(identifier.clone());
 
+                    let index = self
+                        .variable_index(identifier)
+                        .map_err(|_| CompileError::Internal)?;
+
                     self.generate_expr(expression)?;
-                    self.emit(Instruction::StoreVar(index as u8))?;
+                    self.emit(Instruction::StoreVar(index))?;
                 }
             }
             Statement::Assign(AssignStatement {
                 identifier,
                 expression,
             }) => {
-                if let Some(last) = self.variable_stack.last_mut() {
-                    // TODO.
-                    let index = last.iter().rposition(|v| v == identifier).unwrap_or(0);
-                    self.generate_expr(expression)?;
-                    self.emit(Instruction::StoreVar(index as u8))?;
-                }
+                let index = self.variable_index(identifier)?;
+                self.generate_expr(expression)?;
+                self.emit(Instruction::StoreVar(index))?;
             }
             Statement::Expression(expr) => {
                 self.generate_expr(expr)?;
@@ -216,9 +240,13 @@ impl CodeGenerator {
                 let jump_end = self.emit(Instruction::JumpIfFalse(0))?;
                 self.emit(Instruction::Pop)?;
 
+                self.variable_stack.push(Vec::new());
+
                 for stmt in body {
                     self.generate_stmt(stmt)?;
                 }
+
+                self.variable_stack.pop().ok_or(CompileError::Internal)?;
 
                 self.emit(Instruction::Jump(loop_start))?;
                 let end_addr = self.current_addr();
@@ -266,9 +294,6 @@ impl CodeGenerator {
             self.variable_stack.last_mut().unwrap().push(arg.clone());
         }
         self.generate_block(&func.body)?;
-        for stmt in &func.body.statements {
-            self.generate_stmt(stmt)?;
-        }
         if !matches!(self.instructions.last(), Some(Instruction::Return)) {
             self.emit(Instruction::Return)?;
         }

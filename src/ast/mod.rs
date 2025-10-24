@@ -5,7 +5,7 @@ pub use expression::*;
 mod statement;
 pub use statement::*;
 
-type Identifier = String;
+pub type Identifier = String;
 
 /// A function with a name, parameters, and a body.
 ///

@@ -95,6 +95,37 @@ fn simple_while_loop() {
 }
 
 #[test]
+fn undefined() {
+    let src = r#"
+        fn undefined() {
+            return a;
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let mut vm = VirtualMachine::new().with_type_casting();
+    let result = vm.load_program(&ast).unwrap_err();
+    assert!(matches!(result, CompileError::UndefinedVariable { .. }));
+}
+
+#[test]
+fn scope() {
+    let src = r#"
+        fn scope() {
+            {
+                let a = null;
+            };
+            return a;
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let mut vm = VirtualMachine::new().with_type_casting();
+    let result = vm.load_program(&ast).unwrap_err();
+    assert!(matches!(result, CompileError::UndefinedVariable { .. }));
+}
+
+#[test]
 #[cfg(feature = "single_line_comment")]
 fn single_line_comments() {
     let src = r#"

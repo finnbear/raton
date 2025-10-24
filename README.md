@@ -69,7 +69,6 @@ Unfinished, do not use in production.
 - [ ] Denial of service prevention
 - [ ] Proper error handling
 - [ ] Proper error messages
-- [ ] Lexical scope
 
 ## License
 
