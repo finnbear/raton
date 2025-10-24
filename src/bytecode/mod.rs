@@ -25,20 +25,13 @@ pub enum Instruction {
     #[cfg(feature = "bool_type")]
     JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
-    Call(String, u8),
+    CallByName(String, u8),
+    /// Call the function at the given instruction pointer with the given number of arguments.
+    CallByIp(u32, u8),
     /// Return from the current function.
     Return,
     /// Discard an item popped from the stack.
     Pop,
-}
-
-/// A bytecode instruction stream for a single function.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
-#[non_exhaustive]
-pub struct FunctionBytecode {
-    pub instructions: Vec<Instruction>,
 }
 
 /// A bytecode instruction stream for a whole program, with known entry

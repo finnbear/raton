@@ -23,18 +23,17 @@ fn target(src: &str) {
             return;
         }
     };
-    let _vm = VirtualMachine::new(&program)
+    let vm = VirtualMachine::new(&program)
         .with_type_casting()
         .with_instruction_budget(200)
         .with_max_stack_depth(10);
 
-    for _func in ast
+    for func in ast
         .functions
         .iter()
         .map(|f| f.identifier.clone())
         .collect::<Vec<_>>()
     {
-        // infinite recursion not protected yet.
-        //let _ = vm.execute(&func, vec![Value::I32(5)]);
+        let _ = vm.execute(&func, vec![Value::I32(5)]);
     }
 }

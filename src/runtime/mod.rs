@@ -155,6 +155,11 @@ impl<'a> VirtualMachine<'a> {
     }
 
     pub fn execute(&self, func_name: &str, args: Vec<Value>) -> Result<Value, RuntimeError> {
+        struct CallFrame {
+            first_variable: u32,
+            return_address: u32,
+        }
+        let mut call_stack = Vec::<CallFrame>::new();
         let mut stack: Vec<Value> = Vec::new();
         let mut variables = args;
         let mut pc = *self
@@ -165,7 +170,6 @@ impl<'a> VirtualMachine<'a> {
                 name: func_name.to_owned(),
             })?;
         let mut instruction_budget = self.instruction_budget;
-        // let mut stack_budget = self.max_stack_depth;
 
         while let Some(instruction) = self.program.instructions.get(pc as usize) {
             if let Some(instruction_budget) = &mut instruction_budget {
@@ -181,19 +185,25 @@ impl<'a> VirtualMachine<'a> {
                     pc += 1;
                 }
                 &Instruction::LoadVar(index) => {
+                    let relative_index =
+                        call_stack.last_mut().map(|f| f.first_variable).unwrap_or(0) as usize
+                            + index as usize;
                     let val = variables
-                        .get(index as usize)
+                        .get(relative_index)
                         .ok_or_else(|| RuntimeError::UndefinedVariable { index })?;
                     stack.push(val.clone());
                     pc += 1;
                 }
                 &Instruction::StoreVar(index) => {
                     let val = stack.pop().ok_or(RuntimeError::StackUnderflow)?;
-                    while variables.len() < index as usize + 1 {
+                    let relative_index =
+                        call_stack.last_mut().map(|f| f.first_variable).unwrap_or(0) as usize
+                            + index as usize;
+                    while variables.len() < relative_index + 1 {
                         variables.push(Value::Null);
                     }
                     *variables
-                        .get_mut(index as usize)
+                        .get_mut(relative_index)
                         .ok_or_else(|| RuntimeError::UndefinedVariable { index })? = val;
                     pc += 1;
                 }
@@ -385,7 +395,7 @@ impl<'a> VirtualMachine<'a> {
                         pc += 1;
                     }
                 }
-                Instruction::Call(name, arg_count) => {
+                Instruction::CallByName(name, arg_count) => {
                     let mut call_args = Vec::new();
                     for _ in 0..*arg_count {
                         call_args.push(stack.pop().ok_or(RuntimeError::StackUnderflow)?);
@@ -401,8 +411,31 @@ impl<'a> VirtualMachine<'a> {
                     stack.push(result);
                     pc += 1;
                 }
+                Instruction::CallByIp(ip, arg_count) => {
+                    let first_variable = variables.len();
+
+                    if self.max_stack_depth == Some(call_stack.len() as u8) {
+                        return Err(RuntimeError::StackOverflow);
+                    }
+
+                    call_stack.push(CallFrame {
+                        first_variable: first_variable as u32,
+                        return_address: pc + 1,
+                    });
+
+                    for _ in 0..*arg_count {
+                        variables.push(stack.pop().ok_or(RuntimeError::StackUnderflow)?);
+                    }
+                    variables[first_variable..first_variable + *arg_count as usize].reverse();
+
+                    pc = *ip;
+                }
                 Instruction::Return => {
-                    return stack.pop().ok_or(RuntimeError::StackUnderflow);
+                    if let Some(CallFrame { return_address, .. }) = call_stack.pop() {
+                        pc = return_address;
+                    } else {
+                        return stack.pop().ok_or(RuntimeError::StackUnderflow);
+                    }
                 }
                 Instruction::Pop => {
                     stack.pop().ok_or(RuntimeError::StackUnderflow)?;

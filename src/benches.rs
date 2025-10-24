@@ -10,6 +10,14 @@ use test::Bencher;
 // test benches::fib_28             ... bench: 137,125,511 ns/iter (+/- 19,572,563)
 // test benches::million_iterations ... bench:  44,711,787 ns/iter (+/- 5,496,146)
 
+// Oct 24 2025 (after custom stack)
+// test benches::fib_28             ... bench:  80,010,209.00 ns/iter (+/- 13,744,648.44)
+// test benches::million_iterations ... bench:  44,463,605.80 ns/iter (+/- 5,599,272.26)
+
+// Oct 24 2025 (after custom stack optimized)
+// test benches::fib_28             ... bench:  58,545,572.00 ns/iter (+/- 10,114,819.82)
+// test benches::million_iterations ... bench:  42,496,642.50 ns/iter (+/- 8,920,702.95)
+
 #[allow(unused)]
 fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: Vec<Value>, expected: Value) {
     let ast = Parser::new().parse(src).unwrap();

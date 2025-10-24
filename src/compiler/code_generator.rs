@@ -170,7 +170,7 @@ impl CodeGenerator {
                 for argument in arguments {
                     self.generate_expr(argument)?;
                 }
-                self.emit(Instruction::Call(name.clone(), arguments.len() as u8))?;
+                self.emit(Instruction::CallByName(name.clone(), arguments.len() as u8))?;
             }
             #[cfg(feature = "if_expression")]
             Expression::If(IfExpression {
@@ -298,6 +298,11 @@ impl CodeGenerator {
     }
 
     fn generate_function(&mut self, func: &Function) -> Result<(), CompileError> {
+        if self.public_functions.contains_key(&func.identifier) {
+            return Err(CompileError::Shadowing {
+                name: func.identifier.clone(),
+            });
+        }
         self.public_functions
             .insert(func.identifier.clone(), self.instructions.len() as u32);
         self.variable_stack.push(Vec::new());
@@ -314,6 +319,13 @@ impl CodeGenerator {
     pub fn generate_program(mut self, program: &Program) -> Result<ProgramBytecode, CompileError> {
         for function in &program.functions {
             self.generate_function(function)?;
+        }
+        for instruction in &mut self.instructions {
+            if let Instruction::CallByName(name, args) = instruction {
+                if let Some(func) = self.public_functions.get(&*name) {
+                    *instruction = Instruction::CallByIp(*func, *args);
+                }
+            }
         }
         Ok(ProgramBytecode {
             public_functions: self.public_functions,
