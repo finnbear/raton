@@ -432,21 +432,28 @@ impl<'a> VirtualMachine<'a> {
                         return Err(RuntimeError::StackOverflow);
                     }
 
-                    let mut call_args = Vec::new();
-                    for _ in 0..*arg_count {
-                        call_args.push(self.stack.pop().ok_or(RuntimeError::StackUnderflow)?);
-                    }
-                    call_args.reverse();
+                    let first_variable =
+                        if let Some(fv) = self.stack.len().checked_sub(*arg_count as usize) {
+                            fv
+                        } else {
+                            return Err(RuntimeError::StackUnderflow);
+                        };
+
+                    let args =
+                        &mut self.stack[first_variable..first_variable + *arg_count as usize];
+                    args.reverse();
 
                     let result = if let Some(host_fn) = self.host_functions.get_mut(name) {
-                        host_fn(&call_args)?
+                        host_fn(&*args)?
                     } else {
                         return Err(RuntimeError::UndefinedFunction {
                             name: name.to_string(),
                         });
                     };
 
+                    self.stack.truncate(first_variable);
                     self.stack.push(result);
+
                     pc += 1;
                 }
                 Instruction::CallByAddress(ip, arg_count) => {

@@ -25,14 +25,18 @@ fn minimal() {
 
 #[test]
 #[cfg(all(feature = "i32_type", feature = "f32_type"))]
-fn simple_function() {
+fn simple_function2() {
     let src = r#"
         fn to_float(a) {
             return f32(a);
         }
+
+        fn to_float2(a) {
+            return to_float(a);
+        }
     "#;
 
-    assert_execute(src, "to_float", &[Value::I32(5)], Value::F32(5.0));
+    assert_execute(src, "to_float2", &[Value::I32(5)], Value::F32(5.0));
 }
 
 #[test]
