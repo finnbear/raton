@@ -47,7 +47,8 @@ pub trait ToRuntimeValue<'a>: Sized {
 /// Types that can be converted from a [`RuntimeValue`], allowing them to
 /// be passed as arguments from a script function to the host.
 pub trait FromRuntimeValue<'a>: Sized {
-    /// The specific type this is looking for, if any.
+    /// The specific type this is looking for, if any. This is used to
+    /// improve errors.
     const TYPE: Option<Type> = None;
 
     /// Perform the conversion, returning [`None`] if the [`RuntimeValue`]

@@ -30,10 +30,6 @@ fn sum_to_n(n) {
 }
 ```
 
-## Status
-
-Unfinished, do not use in production.
-
 ## Components
 - [x] Parser
 - [x] Bytecode generator

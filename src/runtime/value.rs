@@ -7,7 +7,7 @@ use std::{any::Any, fmt::Debug};
 pub enum RuntimeValue<'a> {
     /// See [`Value`].
     Value(Value),
-    /// An opaque Rust value.
+    /// See [`Extern`].
     Extern(Extern<'a>),
 }
 
@@ -51,7 +51,7 @@ impl<'a> Default for RuntimeValue<'a> {
     }
 }
 
-/// An opaque value from the host, outside the script.
+/// An opaque Rust value from the host, outside the script.
 #[non_exhaustive]
 pub enum Extern<'a> {
     #[cfg(feature = "extern_value_type")]

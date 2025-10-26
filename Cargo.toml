@@ -3,8 +3,11 @@ name = "raton"
 authors = [ "Finn Bear" ]
 version = "0.1.0-alpha.6"
 edition = "2021"
+rust-version = "1.65"
 license = "MIT OR Apache-2.0"
 description = "ratón is a tiny, modular, embeddable scripting language"
+keywords = ["scripting", "scripting-engine", "scripting-language"]
+categories = ["parser-implementations"]
 repository = "https://github.com/finnbear/raton"
 exclude = ["fuzz/"]
 

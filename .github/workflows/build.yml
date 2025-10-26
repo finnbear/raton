@@ -29,6 +29,13 @@ jobs:
         run: cargo fmt --check
       - name: Lint (clippy)
         run: cargo clippy
+      - name: Install cargo-msrv
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-msrv
+          locked: false
+      - name: Verify MSRV
+        run: cargo msrv verify --ignore-lockfile
       - name: Install cargo-hack
         run: cargo install cargo-hack
       - name: Check (feature power-set)
