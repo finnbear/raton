@@ -3,7 +3,7 @@ name = "raton"
 authors = [ "Finn Bear" ]
 version = "0.1.0-alpha.6"
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.68"
 license = "MIT OR Apache-2.0"
 description = "ratón is a tiny, modular, embeddable scripting language"
 keywords = ["scripting", "scripting-engine", "scripting-language"]
@@ -29,9 +29,9 @@ single_line_comment = []
 multi_line_comment = []
 
 [dependencies]
-nom = "8.0.0"
-nom-language = "0.1.0"
-thiserror = "2.0.17"
+nom = "=8.0.0"
+nom-language = "=0.1.0"
+thiserror = "=2.0.17"
 serde = { version = "1", features = ["std", "derive"], default-features = false, optional = true }
 bitcode = { version = "0", features = ["std", "derive"], default-features = false, optional = true }
 arbitrary = { version = "1", features = ["derive"], optional = true }
