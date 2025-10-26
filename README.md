@@ -64,9 +64,8 @@ Unfinished, do not use in production.
 
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
 - [x] Parsing, code generation, and runtime have configurable limits
+- [x] Error handling and reporting
 - [ ] `no_std`
-- [ ] Proper error handling
-- [ ] Proper error messages
 
 ## Performance
 

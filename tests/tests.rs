@@ -302,3 +302,22 @@ fn deep() {
         println!("{n}, {:.2}", time.as_secs_f32());
     }
 }
+
+#[test]
+fn parse_error() {
+    let src = r#"
+        fn foobar(a, b, c) {
+            baz(a, b, c
+        }
+    "#;
+
+    let expected = r#"
+0: at line 4:
+        }
+        ^
+expected ')', found }
+    "#;
+
+    let err = Parser::new().parse(src).unwrap_err();
+    assert_eq!(err.to_string().trim(), expected.trim());
+}
