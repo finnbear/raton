@@ -619,8 +619,6 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
                         return_address: pc + 1,
                     });
 
-                    self.stack[first_variable..first_variable + *arg_count as usize].reverse();
-
                     pc = *ip;
                 }
                 Instruction::Return => {

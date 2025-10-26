@@ -98,6 +98,39 @@ fn simple_if_expression() {
 }
 
 #[test]
+#[cfg(all(feature = "if_expression", feature = "i32_type"))]
+fn argument_order() {
+    let src = r#"
+        fn first(a, b) {
+            a
+        }
+
+        fn call_first(a, b) {
+            first(a, b)
+        }
+    "#;
+
+    assert_execute(
+        src,
+        "call_first",
+        &mut [
+            RuntimeValue::Value(Value::I32(5)),
+            RuntimeValue::Value(Value::I32(3)),
+        ],
+        Value::I32(5),
+    );
+    assert_execute(
+        src,
+        "call_first",
+        &mut [
+            RuntimeValue::Value(Value::I32(3)),
+            RuntimeValue::Value(Value::I32(5)),
+        ],
+        Value::I32(3),
+    );
+}
+
+#[test]
 #[cfg(all(feature = "while_loop", feature = "i32_type"))]
 fn simple_while_loop() {
     let src = r#"
