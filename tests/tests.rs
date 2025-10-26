@@ -2,7 +2,7 @@ use raton::prelude::*;
 #[allow(unused_imports)]
 use std::time::Instant;
 
-fn assert_execute(src: &str, func: &str, args: &[Value], expected: Value) {
+fn assert_execute<'a>(src: &str, func: &str, args: &'a mut [RuntimeValue<'a>], expected: Value) {
     let ast = Parser::new().parse(src).unwrap();
     let program = CodeGenerator::new()
         .with_max_depth(100)
@@ -10,8 +10,8 @@ fn assert_execute(src: &str, func: &str, args: &[Value], expected: Value) {
         .unwrap();
     let mut vm = VirtualMachine::new(&program).with_type_casting();
 
-    let result = vm.execute(func, &args).unwrap();
-    assert_eq!(result, expected);
+    let result = vm.call(func, args).unwrap();
+    assert_eq!(result, RuntimeValue::Value(expected));
 }
 
 #[test]
@@ -20,7 +20,7 @@ fn minimal() {
         fn hello() {}
     "#;
 
-    assert_execute(src, "hello", &[], Value::Null);
+    assert_execute(src, "hello", &mut [], Value::Null);
 }
 
 #[test]
@@ -36,7 +36,12 @@ fn simple_function2() {
         }
     "#;
 
-    assert_execute(src, "to_float2", &[Value::I32(5)], Value::F32(5.0));
+    assert_execute(
+        src,
+        "to_float2",
+        &mut [RuntimeValue::Value(Value::I32(5))],
+        Value::F32(5.0),
+    );
 }
 
 #[test]
@@ -48,7 +53,15 @@ fn simple_math() {
         }
     "#;
 
-    assert_execute(src, "add", &[Value::I32(5), Value::I32(3)], Value::I32(8));
+    assert_execute(
+        src,
+        "add",
+        &mut [
+            RuntimeValue::Value(Value::I32(5)),
+            RuntimeValue::Value(Value::I32(3)),
+        ],
+        Value::I32(8),
+    );
 }
 
 #[test]
@@ -64,8 +77,24 @@ fn simple_if_expression() {
         }
     "#;
 
-    assert_execute(src, "max", &[Value::I32(5), Value::I32(3)], Value::I32(5));
-    assert_execute(src, "max", &[Value::I32(3), Value::I32(5)], Value::I32(5));
+    assert_execute(
+        src,
+        "max",
+        &mut [
+            RuntimeValue::Value(Value::I32(5)),
+            RuntimeValue::Value(Value::I32(3)),
+        ],
+        Value::I32(5),
+    );
+    assert_execute(
+        src,
+        "max",
+        &mut [
+            RuntimeValue::Value(Value::I32(3)),
+            RuntimeValue::Value(Value::I32(5)),
+        ],
+        Value::I32(5),
+    );
 }
 
 #[test]
@@ -83,7 +112,65 @@ fn simple_while_loop() {
         }
     "#;
 
-    assert_execute(src, "sum_to_n", &[Value::I32(5)], Value::I32(15));
+    assert_execute(
+        src,
+        "sum_to_n",
+        &mut [RuntimeValue::Value(Value::I32(5))],
+        Value::I32(15),
+    );
+}
+
+#[test]
+#[cfg(feature = "extern_value_type")]
+fn extern_types() {
+    use std::rc::Rc;
+
+    struct Foo {
+        contents: u8,
+    }
+
+    let src = r#"
+        fn call_on_extern(a, b, c) {
+            host_call(a, b, c)
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let program = CodeGenerator::new()
+        .with_max_depth(100)
+        .generate_program(&ast)
+        .unwrap();
+
+    let mut a = Foo { contents: 2 };
+    let mut other = 0;
+
+    {
+        let mut vm = VirtualMachine::new(&program)
+            .with_type_casting()
+            .with_host_function(
+                "host_call",
+                |ExternValue(a): ExternValue<Foo>,
+                 ExternRef(b): ExternRef<'_, Foo>,
+                 ExternMut(c): ExternMut<'_, Foo>| {
+                    c.contents *= a.contents * b.contents;
+                    other += 1;
+                    Ok(RuntimeValue::default())
+                },
+            );
+
+        let result = vm
+            .call3(
+                "call_on_extern",
+                ExternValue(Rc::new(Foo { contents: 3 })),
+                ExternRef(&Foo { contents: 5 }),
+                ExternMut(&mut a),
+            )
+            .unwrap();
+        assert_eq!(result, Default::default());
+    }
+
+    assert_eq!(a.contents, 30);
+    assert_eq!(other, 1);
 }
 
 #[test]
@@ -126,7 +213,7 @@ fn single_line_comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", &[], Value::Null);
+    assert_execute(src, "enterprise_grade", &mut [], Value::Null);
 }
 
 #[test]
@@ -141,7 +228,7 @@ fn multi_line_comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", &[], Value::Null);
+    assert_execute(src, "enterprise_grade", &mut [], Value::Null);
 }
 
 #[test]
@@ -157,7 +244,7 @@ fn comments() {
         }
     "#;
 
-    assert_execute(src, "enterprise_grade", &[], Value::Null);
+    assert_execute(src, "enterprise_grade", &mut [], Value::Null);
 }
 
 #[test]
@@ -177,7 +264,7 @@ fn deep() {
         );
 
         let start = Instant::now();
-        assert_execute(&src, "deep", &[], Value::I32(42));
+        assert_execute(&src, "deep", &mut [], Value::I32(42));
         let time = start.elapsed();
         println!("{n}, {:.2}", time.as_secs_f32());
     }

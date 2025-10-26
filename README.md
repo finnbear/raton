@@ -47,8 +47,8 @@ Unfinished, do not use in production.
 - [x] `i32` (optional `i32_type` feature)
 - [x] `f32` (optional `f32_type` feature)
 - [x] `string` (optional `string_type` feature)
-- [ ] Host value (optional)
-- [ ] Host reference (optional)
+- [x] Host value (optional `extern_value` feature)
+- [x] Host immutable/mutable reference
 
 ## Modular language features
 - [x] `if`, `else` (optional `if_expression` feature)

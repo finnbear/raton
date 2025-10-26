@@ -1,4 +1,4 @@
-use crate::{ast::*, bytecode::*, BinaryOperator, Value};
+use crate::{ast::*, bytecode::*, Value};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -170,7 +170,7 @@ impl CodeGenerator {
             }
             #[cfg(feature = "bool_type")]
             Expression::Binary(BinaryExpression {
-                operator: BinaryOperator::And,
+                operator: crate::BinaryOperator::And,
                 left,
                 right,
             }) => {
@@ -183,7 +183,7 @@ impl CodeGenerator {
             }
             #[cfg(feature = "bool_type")]
             Expression::Binary(BinaryExpression {
-                operator: BinaryOperator::Or,
+                operator: crate::BinaryOperator::Or,
                 left,
                 right,
             }) => {

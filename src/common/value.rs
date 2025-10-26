@@ -1,56 +1,19 @@
 #[allow(unused_imports)]
-use crate::runtime::RuntimeError;
 use std::fmt::{self, Display};
 
-/// The type of a [`Value`].
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
-#[non_exhaustive]
-pub enum Type {
-    /// The type of [`Value::Null`].
-    Null,
-    /// The type of [`Value::Bool`].
-    #[cfg(feature = "bool_type")]
-    Bool,
-    /// The type of [`Value::I32`].
-    #[cfg(feature = "i32_type")]
-    I32,
-    /// The type of [`Value::F32`].
-    #[cfg(feature = "f32_type")]
-    F32,
-    /// The type of [`Value::String`].
-    #[cfg(feature = "string_type")]
-    String,
-}
-
-impl Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::Null => "null",
-            #[cfg(feature = "bool_type")]
-            Self::Bool => "bool",
-            #[cfg(feature = "i32_type")]
-            Self::I32 => "i32",
-            #[cfg(feature = "f32_type")]
-            Self::F32 => "f32",
-            #[cfg(feature = "string_type")]
-            Self::String => "string",
-        })
-    }
-}
+use crate::runtime::Type;
 
 /// A value, used an argument, operand, or return value.
 ///
 /// It cannot be evaluated any further.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
 #[non_exhaustive]
 pub enum Value {
     /// A missing value.
+    #[default]
     Null,
     /// A boolean, [`true`] or [`false`].
     #[cfg(feature = "bool_type")]
@@ -79,17 +42,6 @@ impl Value {
             Value::F32(_) => Type::F32,
             #[cfg(feature = "string_type")]
             Value::String(_) => Type::String,
-        }
-    }
-
-    #[cfg(feature = "bool_type")]
-    pub(crate) fn as_bool(&self) -> Result<bool, RuntimeError> {
-        match self {
-            Value::Bool(b) => Ok(*b),
-            _ => Err(RuntimeError::TypeMismatch {
-                expected: Type::Bool,
-                actual: self.type_of(),
-            }),
         }
     }
 }

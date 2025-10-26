@@ -30,7 +30,7 @@ fn target(ast: Program) {
         .map(|f| f.identifier.clone())
         .collect::<Vec<_>>()
     {
-        let result = vm.execute(&func, &[Value::I32(5)]);
+        let result = vm.call1(&func, Value::I32(5));
         if matches!(
             result,
             Err(RuntimeError::IllegalInstruction | RuntimeError::BytecodeEndedAbruptly)

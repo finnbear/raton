@@ -26,15 +26,37 @@ use test::{black_box, Bencher};
 // test benches::fib_28             ... bench: 305,698,143.70 ns/iter (+/- 88,536,045.25)
 // test benches::million_iterations ... bench:  41,642,978.90 ns/iter (+/- 9,144,916.79)
 
+// Oct 25 2025 (after adding extern)
+// test benches::fib_28             ... bench: 391,909,564.60 ns/iter (+/- 48,836,435.46)
+// test benches::million_iterations ... bench:  54,902,119.30 ns/iter (+/- 6,247,312.49)
+
 #[allow(unused)]
-fn bench_execute(b: &mut Bencher, src: &str, func: &str, args: &[Value], expected: Value) {
+fn bench_execute<'a>(
+    b: &mut Bencher,
+    src: &str,
+    func: &str,
+    args: &'a mut [RuntimeValue<'a>],
+    expected: RuntimeValue<'a>,
+) {
     let ast = Parser::new().parse(src).unwrap();
     let program = CodeGenerator::new().generate_program(&ast).unwrap();
-    let mut vm = VirtualMachine::new(&program).with_type_casting();
 
-    b.iter(|| {
+    b.iter(move || {
+        // Hack.
+        let mut values = args
+            .iter()
+            .map(|v| {
+                if let RuntimeValue::Value(v) = v {
+                    RuntimeValue::<'static>::Value(v.clone())
+                } else {
+                    unimplemented!();
+                }
+            })
+            .collect::<Vec<_>>();
+        let mut vm = VirtualMachine::new(&program).with_type_casting();
+
         let result = black_box(&mut vm)
-            .execute(black_box(func), black_box(args))
+            .call(black_box(func), black_box(&mut values))
             .unwrap();
         assert_eq!(result, expected);
     })
@@ -52,7 +74,7 @@ fn million_iterations(b: &mut Bencher) {
         }
     "#;
 
-    bench_execute(b, src, "million", &[], Value::Null);
+    bench_execute(b, src, "million", &mut [], RuntimeValue::Value(Value::Null));
 }
 
 #[bench]
@@ -82,5 +104,11 @@ fn fib_28(b: &mut test::Bencher) {
         }
     "#;
 
-    bench_execute(b, src, "five", &[Value::I32(28)], Value::I32(317811));
+    bench_execute(
+        b,
+        src,
+        "five",
+        &mut [RuntimeValue::Value(Value::I32(28))],
+        RuntimeValue::Value(Value::I32(317811)),
+    );
 }

@@ -2,4 +2,4 @@
 
 pub use crate::compiler::*;
 pub use crate::runtime::*;
-pub use crate::{Type, Value};
+pub use crate::Value;

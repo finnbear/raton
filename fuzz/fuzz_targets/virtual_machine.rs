@@ -18,6 +18,6 @@ fn target(program: ProgramBytecode) {
         .cloned()
         .collect::<Vec<String>>()
     {
-        let _ = vm.execute(&func, &[Value::I32(5)]);
+        let _ = vm.call1(&func, Value::I32(5));
     }
 }
