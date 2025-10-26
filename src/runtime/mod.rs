@@ -17,7 +17,7 @@ pub type HostFunction<'data> =
 
 /// Interprets bytecode.
 pub struct VirtualMachine<'code, 'data> {
-    program: &'code ProgramBytecode,
+    program: Cow<'code, ProgramBytecode>,
     host_functions: HashMap<Cow<'code, str>, ErasedFunction<'data>>,
     max_instructions: Option<u32>,
     max_stack_depth: Option<u8>,
@@ -88,9 +88,19 @@ macro_rules! call_n {
 impl<'code, 'data> VirtualMachine<'code, 'data> {
     /// Create a configurable virtual machine for executing bytecode.
     ///
-    /// Each virtual machine has a heap-allocated stack that
+    /// Each virtual machine has a growable heap-allocated stack that
     /// is reused between function calls.
     pub fn new(program: &'code ProgramBytecode) -> Self {
+        Self::new_impl(Cow::Borrowed(program))
+    }
+
+    /// Like [`Self::new`] but takes ownership over [`ProgramBytecode`]. This
+    /// can allow the `'code` lifetime to be `'static`.
+    pub fn new_with_owned(program: ProgramBytecode) -> Self {
+        Self::new_impl(Cow::Owned(program))
+    }
+
+    fn new_impl(program: Cow<'code, ProgramBytecode>) -> Self {
         Self {
             program,
             host_functions: HashMap::new(),
@@ -101,7 +111,8 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
         }
     }
 
-    /// Return a [`RuntimeError::MaxInstructionsExceeded`] if would execute more than this many instructions.
+    /// Return a [`RuntimeError::MaxInstructionsExceeded`] from [`Self::call`] if would
+    /// execute more than this many instructions.
     ///
     /// Default: 100 million
     pub fn with_max_instructions<T: Into<Option<u32>>>(mut self, max: T) -> Self {
@@ -109,11 +120,12 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
         self
     }
 
-    /// Return a [`RuntimeError::StackOverflow`] if more than this many nested functions
-    /// are on the call stack. A host function is tracked as a single function.
+    /// Return a [`RuntimeError::StackOverflow`] from [`Self::call`] if more than this
+    /// many nested functions are on the call stack. A host function is tracked as a
+    /// single function.
     ///
-    /// Note: the stack is heap-allocated, so the host's call stack isn't as much of a
-    /// factor.
+    /// Note: the virtual machine's stack is heap-allocated and growable, so the
+    /// host's call stack isn't as much of a factor.
     ///
     /// Default: 50
     pub fn with_max_stack_depth<T: Into<Option<u8>>>(mut self, max: T) -> Self {
@@ -228,11 +240,12 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
     /// Execute a named bytecode function with arguments, returning the return value. The
     /// virtual machine is not re-entrant.
     ///
-    /// You must pass the correct number of arguments.
+    /// You must pass the correct number of arguments. Most arguments will be cloned out
+    /// of `args`, but [`ExternMut`] will be taken and replaced with [`Value::Null`].
     pub fn call(
         &mut self,
         func_name: &str,
-        args: &'data mut [RuntimeValue<'data>],
+        args: &mut [RuntimeValue<'data>],
     ) -> Result<RuntimeValue<'data>, RuntimeError> {
         self.stack.clear();
         self.stack.reserve(args.len());

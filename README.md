@@ -70,7 +70,7 @@ Unfinished, do not use in production.
 
 ## Performance
 
-Ratón takes ~0.3s on `Fibonacci` and ~0.04s on `1M Loop` (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
+Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
 
 ## Security
 

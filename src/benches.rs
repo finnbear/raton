@@ -31,6 +31,7 @@ use test::{black_box, Bencher};
 // test benches::million_iterations ... bench:  54,902,119.30 ns/iter (+/- 6,247,312.49)
 
 // Oct 25 2025 (after optimizing)
+// test benches::overhead           ... bench:          45.71 ns/iter (+/- 2.51)
 // test benches::fib_28             ... bench: 372,114,652.20 ns/iter (+/- 33,355,530.29)
 // test benches::million_iterations ... bench:  53,791,145.80 ns/iter (+/- 4,036,985.22)
 
@@ -44,26 +45,35 @@ fn bench_execute<'a>(
 ) {
     let ast = Parser::new().parse(src).unwrap();
     let program = CodeGenerator::new().generate_program(&ast).unwrap();
+    let mut vm = VirtualMachine::new(&program)
+        .with_type_casting()
+        .with_max_instructions(None)
+        .with_max_stack_depth(None);
 
     b.iter(move || {
-        // Hack.
-        let mut values = args
-            .iter()
-            .map(|v| {
-                if let RuntimeValue::Value(v) = v {
-                    RuntimeValue::<'static>::Value(v.clone())
-                } else {
-                    unimplemented!();
-                }
-            })
-            .collect::<Vec<_>>();
-        let mut vm = VirtualMachine::new(&program).with_type_casting();
-
         let result = black_box(&mut vm)
-            .call(black_box(func), black_box(&mut values))
+            .call(black_box(func), black_box(args))
             .unwrap();
         assert_eq!(result, expected);
     })
+}
+
+#[bench]
+#[cfg(feature = "bool_type")]
+fn overhead(b: &mut Bencher) {
+    let src = r#"
+        fn simple(a) {
+            a
+        }
+    "#;
+
+    bench_execute(
+        b,
+        src,
+        "simple",
+        &mut [RuntimeValue::Value(Value::Bool(true))],
+        RuntimeValue::Value(Value::Bool(true)),
+    );
 }
 
 #[bench]
