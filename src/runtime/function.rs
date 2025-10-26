@@ -3,7 +3,7 @@ use crate::Value;
 
 /// Type-erased function, callable by a script.
 pub(crate) struct ErasedFunction<'a> {
-    // TODO: SmallBox
+    // TODO: SmallBox?
     #[allow(clippy::type_complexity)]
     inner: Box<dyn FnMut(&mut [RuntimeValue<'a>]) -> Result<RuntimeValue<'a>, RuntimeError> + 'a>,
 }

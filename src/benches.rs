@@ -30,6 +30,10 @@ use test::{black_box, Bencher};
 // test benches::fib_28             ... bench: 391,909,564.60 ns/iter (+/- 48,836,435.46)
 // test benches::million_iterations ... bench:  54,902,119.30 ns/iter (+/- 6,247,312.49)
 
+// Oct 25 2025 (after optimizing)
+// test benches::fib_28             ... bench: 372,114,652.20 ns/iter (+/- 33,355,530.29)
+// test benches::million_iterations ... bench:  53,791,145.80 ns/iter (+/- 4,036,985.22)
+
 #[allow(unused)]
 fn bench_execute<'a>(
     b: &mut Bencher,
