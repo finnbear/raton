@@ -4,6 +4,7 @@ use crate::Value;
 /// Type-erased function, callable by a script.
 pub(crate) struct ErasedFunction<'a> {
     // TODO: SmallBox
+    #[allow(clippy::type_complexity)]
     inner: Box<dyn FnMut(&mut [RuntimeValue<'a>]) -> Result<RuntimeValue<'a>, RuntimeError> + 'a>,
 }
 
@@ -89,9 +90,9 @@ macro_rules! both_ways {
 both_ways!(Value, Value);
 both_ways!(Extern, Extern<'a>);
 
-/// A shared [`Rc`]-reference to a host value, which may be cheaply copied in a script.
+/// A shared [`std::rc::Rc`]-reference to a host value, which may be cheaply copied in a script.
 ///
-/// Since [`Rc`] is heap-allocated, requiring no value to reference it's easier to
+/// Since [`std::rc::Rc`] is heap-allocated, requiring no value to reference it's easier to
 /// create this type of extern value in a host function called by the script.
 #[cfg(feature = "extern_value_type")]
 pub struct ExternValue<T>(pub std::rc::Rc<T>);

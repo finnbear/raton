@@ -1,5 +1,5 @@
 #[cfg(doc)]
-use super::RuntimeValue;
+use super::{Extern, RuntimeValue};
 #[cfg(doc)]
 use crate::Value;
 use std::fmt::{self, Display};

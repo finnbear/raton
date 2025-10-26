@@ -25,8 +25,10 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt, clippy, miri
-      - name: Lint
+      - name: Lint (fmt)
         run: cargo fmt --check
+      - name: Lint (clippy)
+        run: cargo clippy
       - name: Install cargo-hack
         run: cargo install cargo-hack
       - name: Check (feature power-set)

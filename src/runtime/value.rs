@@ -104,9 +104,9 @@ impl<'a, 'b> PartialEq<Extern<'b>> for Extern<'a> {
     fn eq(&self, other: &Extern<'b>) -> bool {
         match (self, other) {
             #[cfg(feature = "extern_value_type")]
-            (Self::Value(v), Extern::Value(v2)) => std::rc::Rc::ptr_eq(&*v, &*v2),
-            (Self::Ref(v), Extern::Ref(v2)) => std::ptr::eq(&*v, &*v2),
-            (Self::Mut(v), Extern::Mut(v2)) => std::ptr::eq(&*v, &*v2),
+            (Self::Value(v), Extern::Value(v2)) => std::rc::Rc::ptr_eq(v, v2),
+            (Self::Ref(v), Extern::Ref(v2)) => std::ptr::eq(&**v, &**v2),
+            (Self::Mut(v), Extern::Mut(v2)) => std::ptr::eq(&**v, &**v2),
             _ => false,
         }
     }

@@ -44,7 +44,7 @@ impl Parser {
     }
 
     /// Parse a program abstract-syntax-tree from source code.
-    pub fn parse<'src>(&self, src: &'src str) -> Result<Program, Vec<ParseError>> {
+    pub fn parse(&self, src: &str) -> Result<Program, Vec<ParseError>> {
         depth_limiter::reset(self.max_depth as u32);
 
         let ret = parse_program.parse(src);
@@ -52,12 +52,12 @@ impl Parser {
         match ret {
             Ok((i, p)) => {
                 if i.is_empty() {
-                    return Ok(p);
+                    Ok(p)
                 } else {
-                    return Err(Vec::new());
+                    Err(Vec::new())
                 }
             }
-            Err(_) => return Err(Vec::new()),
+            Err(_) => Err(Vec::new()),
         }
     }
 }
@@ -102,7 +102,7 @@ mod depth_limiter {
     use std::sync::atomic::{AtomicU32, Ordering};
 
     thread_local! {
-        static DEPTH: AtomicU32 = AtomicU32::new(0);
+        static DEPTH: AtomicU32 = const { AtomicU32::new(0) };
     }
     #[must_use]
     pub struct DepthGuard {}
@@ -176,9 +176,7 @@ where
 }
 
 // Keyword that must not be the prefix of an ident.
-fn keyword<'a>(
-    k: &'a str,
-) -> impl NomParser<&'a str, Output = &'a str, Error = nom::error::Error<&'a str>> {
+fn keyword(k: &str) -> impl NomParser<&str, Output = &str, Error = nom::error::Error<&str>> {
     terminated(
         tag(k),
         not(verify(peek(anychar), |&c: &char| {

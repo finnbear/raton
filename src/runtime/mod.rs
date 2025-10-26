@@ -65,6 +65,7 @@ pub enum RuntimeError {
 macro_rules! call_n {
     ($n:literal, $name:ident, $($a:ident: $A:ident),*) => {
         #[doc = concat!("Like [`Self::call`] but passes ", stringify!($n), " argument(s).")]
+        #[allow(clippy::too_many_arguments)]
         pub fn $name<$($A),*>(
             &mut self,
             func_name: &str,
@@ -303,7 +304,7 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
                     let val = self
                         .stack
                         .get_mut(relative_index)
-                        .ok_or_else(|| RuntimeError::UndefinedVariable { index })?;
+                        .ok_or(RuntimeError::UndefinedVariable { index })?;
                     let loaded = val.clone_or_take();
                     self.stack.push(loaded);
                     pc += 1;
@@ -316,7 +317,7 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
                     *self
                         .stack
                         .get_mut(relative_index)
-                        .ok_or_else(|| RuntimeError::UndefinedVariable { index })? = val;
+                        .ok_or(RuntimeError::UndefinedVariable { index })? = val;
                     pc += 1;
                 }
                 Instruction::UnaryOperator(op) => {
