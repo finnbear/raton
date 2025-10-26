@@ -16,7 +16,7 @@ use nom_language::{
 };
 use std::{
     error::Error,
-    fmt::{self, Debug, Display, Write},
+    fmt::{self, Debug, Display},
 };
 
 /// Parses source code into an abstract syntax tree.
@@ -78,33 +78,6 @@ impl<'a> Error for ParseError<'a> {}
 impl<'a> Display for ParseError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&convert_error(self.src, self.inner.clone()))
-    }
-}
-
-/// The reason for a [`NomParseError`] at a given location.
-#[derive(Clone, Debug)]
-#[allow(missing_docs)]
-pub enum ParseErrorReason {
-    Unexpected {
-        expected: Vec<String>,
-        found: Option<char>,
-    },
-    Other(String),
-}
-
-impl Display for ParseErrorReason {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unexpected { expected, found } => {
-                write!(f, "expected one of [{expected:?}], found ")?;
-                if let Some(found) = found {
-                    f.write_char(*found)
-                } else {
-                    f.write_str("none")
-                }
-            }
-            Self::Other(other) => f.write_str(other),
-        }
     }
 }
 

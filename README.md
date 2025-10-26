@@ -39,6 +39,7 @@ Unfinished, do not use in production.
 - [x] Bytecode generator
 - [x] Bytecode VM
 - [ ] Optimizer
+- [ ] Debugger
 - [ ] Modular standard library
 
 ## Modular type system
