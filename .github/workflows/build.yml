@@ -41,7 +41,11 @@ jobs:
       - name: Check (feature power-set)
         run: cargo hack check --feature-powerset
       - name: Test (feature power-set)
-        run: cargo hack test --feature-powerset --group-features bool_type,if_expression,while_loop --group-features single_line_comment,multi_line_comment --group-features arbitrary,serde,bitcode
+        run: cargo hack test --feature-powerset \
+            --group-features bool_type,if_expression,while_loop \
+            --group-features f32_type,string_type,extern_value_type \
+            --group-features single_line_comment,multi_line_comment \
+            --group-features arbitrary,serde,bitcode
       - name: Setup Miri
         run: cargo miri setup
       - name: Test (miri all-features)
