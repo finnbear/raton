@@ -71,7 +71,7 @@ fn sum_to_n(n) {
 Creating a new VM with several host functions requires ~2 heap allocations and has
 an overhead on the order of 150ns.
 
-Calling a function on a created VM requires ~0 heap allocatinos and has an
+Calling a function on a created VM requires ~0 heap allocations and has an
 overhead on the order of 50ns.
 
 Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` on an i7-7700k (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
