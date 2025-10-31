@@ -52,9 +52,9 @@ impl<'a> RuntimeValue<'a> {
             Self::Value(_) => (TypeId::of::<Value>(), None),
             Self::Extern(e) => match e {
                 #[cfg(feature = "extern_value_type")]
-                Extern::Value(v) => ((&**v).type_id(), Some(Type::ExternValue)),
-                Extern::Ref(r) => ((&**r).type_id(), Some(Type::ExternRef)),
-                Extern::Mut(m) => ((&**m).type_id(), Some(Type::ExternMut)),
+                Extern::Value(v) => ((**v).type_id(), Some(Type::ExternValue)),
+                Extern::Ref(r) => ((**r).type_id(), Some(Type::ExternRef)),
+                Extern::Mut(m) => ((**m).type_id(), Some(Type::ExternMut)),
             },
         }
     }

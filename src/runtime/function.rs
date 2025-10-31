@@ -171,7 +171,7 @@ impl<'a, 'b, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternValue<T>> {
 
     fn deref(&self) -> &Self::Target {
         match &*self.borrow {
-            RuntimeValue::Extern(Extern::Value(v)) => (&**v).downcast_ref().unwrap(),
+            RuntimeValue::Extern(Extern::Value(v)) => (**v).downcast_ref().unwrap(),
             // Wrong receiver chosen.
             _ => unreachable!(),
         }
@@ -184,7 +184,7 @@ impl<'b, 'a: 'b, 'c, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternRef<
 
     fn deref(&self) -> &Self::Target {
         match &*self.borrow {
-            RuntimeValue::Extern(Extern::Ref(v)) => (&**v).downcast_ref().unwrap(),
+            RuntimeValue::Extern(Extern::Ref(v)) => (**v).downcast_ref().unwrap(),
             // Wrong receiver chosen.
             _ => unreachable!(),
         }
@@ -197,7 +197,7 @@ impl<'b, 'a: 'b, 'c, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternMut<
 
     fn deref(&self) -> &Self::Target {
         match &*self.borrow {
-            RuntimeValue::Extern(Extern::Mut(v)) => (&**v).downcast_ref().unwrap(),
+            RuntimeValue::Extern(Extern::Mut(v)) => (**v).downcast_ref().unwrap(),
             // Wrong receiver chosen.
             _ => unreachable!(),
         }
@@ -208,7 +208,7 @@ impl<'b, 'a: 'b, 'c, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternMut<
 impl<'b, 'a: 'b, 'c, T: 'static> std::ops::DerefMut for Receiver<'a, 'b, ExternMut<'c, T>> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self.borrow {
-            RuntimeValue::Extern(Extern::Mut(v)) => (&mut **v).downcast_mut().unwrap(),
+            RuntimeValue::Extern(Extern::Mut(v)) => (**v).downcast_mut().unwrap(),
             // Wrong receiver chosen.
             _ => unreachable!(),
         }
