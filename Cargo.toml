@@ -24,7 +24,7 @@ f32_type = []
 string_type = []
 extern_value_type = []
 if_expression = ["bool_type"]
-method_call_expression = ["ref-cast"]
+method_call_expression = []
 while_loop = ["bool_type"]
 single_line_comment = []
 multi_line_comment = []
@@ -34,7 +34,6 @@ nom = "=8.0.0"
 nom-language = "=0.1.0"
 thiserror = "=2.0.17"
 hashbrown = { version = "=0.16.0", features = ["equivalent", "default-hasher", "raw-entry"], default-features = false }
-ref-cast = { version = "=1.0.25", optional = true }
 serde = { version = "1", features = ["std", "derive"], default-features = false, optional = true }
 bitcode = { version = "0", features = ["std", "derive"], default-features = false, optional = true }
 arbitrary = { version = "1", features = ["derive"], optional = true }

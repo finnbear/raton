@@ -132,7 +132,6 @@ pub struct ExternMut<'a, T>(pub &'a mut T);
 /// Wrap the first function argument in this to indicate it is a receiver, such that
 /// two functions with the same name can be disambiguated by which type they are
 /// called on.
-#[derive(ref_cast::RefCast)]
 #[cfg(feature = "method_call_expression")]
 #[repr(transparent)]
 pub struct Receiver<'a, 'b, T: 'static> {
