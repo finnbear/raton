@@ -207,6 +207,61 @@ fn extern_types() {
 }
 
 #[test]
+#[cfg(all(feature = "extern_value_type", feature = "method_call_expression"))]
+fn method_call() {
+    struct Foo {
+        contents: u8,
+    }
+
+    let src = r#"
+        fn call_on_receiver(a, b) {
+            a.host_call(b);
+            a.host_call(b);
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let program = CodeGenerator::new()
+        .with_max_depth(100)
+        .generate_program(&ast)
+        .unwrap();
+
+    let a = std::rc::Rc::new(Foo { contents: 2 });
+    let mut other = 0;
+
+    {
+        let mut vm = VirtualMachine::new(&program)
+            .with_type_casting()
+            .with_host_function(
+                "host_call",
+                |_receiver: Receiver<ExternValue<Foo>>, ExternRef(_b): ExternRef<'_, Foo>| {
+                    //receiver.contents *= b.contents;
+                    other += 1;
+                    Ok(RuntimeValue::default())
+                },
+            )
+            .with_host_function(
+                "host_call",
+                |_: Receiver<Value>| -> Result<Value, RuntimeError> {
+                    panic!("wrong method called");
+                },
+            );
+
+        let result = vm
+            .call2(
+                "call_on_receiver",
+                ExternValue(std::rc::Rc::clone(&a)),
+                ExternRef(&Foo { contents: 5 }),
+            )
+            .unwrap();
+        assert_eq!(result, Default::default());
+    }
+
+    assert_eq!(a.contents, 2);
+    assert_eq!(other, 2);
+}
+
+#[test]
 fn undefined() {
     let src = r#"
         fn undefined() {

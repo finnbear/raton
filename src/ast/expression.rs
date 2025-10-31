@@ -22,6 +22,9 @@ pub enum Expression {
     Binary(BinaryExpression),
     /// See [`CallExpression`].
     Call(CallExpression),
+    /// See [`MethodCallExpression`].
+    #[cfg(feature = "method_call_expression")]
+    MethodCall(MethodCallExpression),
     #[cfg(feature = "if_expression")]
     /// See [`IfExpression`].
     If(IfExpression),
@@ -67,12 +70,28 @@ pub struct CallExpression {
     pub arguments: Vec<Expression>,
 }
 
+/// `receiver.identifier(arg1, arg2)`
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg(feature = "method_call_expression")]
+#[non_exhaustive]
+pub struct MethodCallExpression {
+    /// Reciever.
+    pub receiver: Box<Expression>,
+    /// Name of the method to call.
+    pub identifier: Identifier,
+    /// Expressions to evaluate to produce function arguments.
+    pub arguments: Vec<Expression>,
+}
+
 /// `if cond { then_branch }`
 /// `if cond { then_branch } else { else_branch }`
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg(feature = "if_expression")]
+#[non_exhaustive]
 pub struct IfExpression {
     /// Check if this condition is true.
     pub condition: Box<Expression>,

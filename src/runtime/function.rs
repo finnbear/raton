@@ -1,16 +1,22 @@
+// For macro.
+#![allow(unused_braces)]
+
 use super::{Extern, RuntimeError, RuntimeValue, Type};
 use crate::Value;
+use std::{any::TypeId, marker::PhantomData, ops::Deref};
 
 /// Type-erased function, callable by a script.
-pub(crate) struct ErasedFunction<'a> {
+pub(crate) struct ErasedFunction<'data, 'func> {
     // TODO: SmallBox?
     #[allow(clippy::type_complexity)]
-    inner: Box<dyn FnMut(&mut [RuntimeValue<'a>]) -> Result<RuntimeValue<'a>, RuntimeError> + 'a>,
+    inner: Box<
+        dyn FnMut(&mut [RuntimeValue<'data>]) -> Result<RuntimeValue<'data>, RuntimeError> + 'func,
+    >,
 }
 
-impl<'a> ErasedFunction<'a> {
+impl<'data, 'func> ErasedFunction<'data, 'func> {
     /// Erase the type of a function.
-    pub(crate) fn new<A, R, F: Function<'a, A, R> + 'a>(mut inner: F) -> Self {
+    pub(crate) fn new<A, R, F: Function<'data, A, R> + 'func>(mut inner: F) -> Self {
         Self {
             inner: Box::new(move |arguments| inner.call(arguments)),
         }
@@ -19,8 +25,8 @@ impl<'a> ErasedFunction<'a> {
     /// Call the type-erased function.
     pub(crate) fn call(
         &mut self,
-        arguments: &mut [RuntimeValue<'a>],
-    ) -> Result<RuntimeValue<'a>, RuntimeError> {
+        arguments: &mut [RuntimeValue<'data>],
+    ) -> Result<RuntimeValue<'data>, RuntimeError> {
         (self.inner)(arguments)
     }
 }
@@ -29,6 +35,9 @@ impl<'a> ErasedFunction<'a> {
 pub trait Function<'a, A, R>: Send + Sync {
     /// The number of arguments.
     const ARGS: usize;
+
+    /// Get the [`TypeId`] of the receiver, if this is a method.
+    fn receiver_type_id() -> Option<TypeId>;
 
     /// Call the function.
     fn call(
@@ -51,9 +60,17 @@ pub trait FromRuntimeValue<'a>: Sized {
     /// improve errors.
     const TYPE: Option<Type> = None;
 
+    /// If this is eventually used in a [`Receiver`], the relevant type.
+    ///
+    /// Must compute this before creating a non-`'static` reference, which
+    /// wouldn't support `TypeId` without `unsafe` code.
+    ///
+    /// Only `None` for `RuntimeValue<'_>`.
+    fn type_id() -> Option<TypeId>;
+
     /// Perform the conversion, returning [`None`] if the [`RuntimeValue`]
     /// is of an incompatible type.
-    fn from_value(value: RuntimeValue<'a>) -> Option<Self>;
+    fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self>;
 }
 
 impl<'a> ToRuntimeValue<'a> for RuntimeValue<'a> {
@@ -63,22 +80,30 @@ impl<'a> ToRuntimeValue<'a> for RuntimeValue<'a> {
 }
 
 impl<'a> FromRuntimeValue<'a> for RuntimeValue<'a> {
-    fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-        Some(value)
+    fn type_id() -> Option<TypeId> {
+        None
+    }
+
+    fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+        Some(std::mem::take(value))
     }
 }
 
 macro_rules! both_ways {
-    ($v:ident, $t:path) => {
+    ($v:ident, $t:path, $typeid:tt) => {
         impl<'a> ToRuntimeValue<'a> for $t {
             fn to_value(self) -> RuntimeValue<'a> {
                 RuntimeValue::$v(self)
             }
         }
 
-        impl<'a> FromRuntimeValue<'a> for $t {
-            fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-                if let RuntimeValue::$v(v) = value {
+        impl<'a, 'b> FromRuntimeValue<'a> for $t {
+            fn type_id() -> Option<TypeId> {
+                $typeid
+            }
+
+            fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+                if let RuntimeValue::$v(v) = std::mem::take(value) {
                     Some(v)
                 } else {
                     None
@@ -88,8 +113,8 @@ macro_rules! both_ways {
     };
 }
 
-both_ways!(Value, Value);
-both_ways!(Extern, Extern<'a>);
+both_ways!(Value, Value, { Some(TypeId::of::<Value>()) });
+both_ways!(Extern, Extern<'a>, None);
 
 /// A shared [`std::rc::Rc`]-reference to a host value, which may be cheaply copied in a script.
 ///
@@ -104,6 +129,91 @@ pub struct ExternRef<'a, T>(pub &'a T);
 /// A mutable reference to a host value, which is taken when used in a script.
 pub struct ExternMut<'a, T>(pub &'a mut T);
 
+/// Wrap the first function argument in this to indicate it is a receiver, such that
+/// two functions with the same name can be disambiguated by which type they are
+/// called on.
+#[derive(ref_cast::RefCast)]
+#[cfg(feature = "method_call_expression")]
+#[repr(transparent)]
+pub struct Receiver<'a, 'b, T: 'static> {
+    borrow: &'b mut RuntimeValue<'a>,
+    _spooky: PhantomData<&'b T>,
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b> Deref for Receiver<'a, 'b, Value> {
+    type Target = Value;
+
+    fn deref(&self) -> &Self::Target {
+        match &*self.borrow {
+            RuntimeValue::Value(v) => v,
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b> std::ops::DerefMut for Receiver<'a, 'b, Value> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self.borrow {
+            RuntimeValue::Value(v) => v,
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternValue<T>> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match &*self.borrow {
+            RuntimeValue::Extern(Extern::Value(v)) => (&**v).downcast_ref().unwrap(),
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternRef<'a, T>> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match &*self.borrow {
+            RuntimeValue::Extern(Extern::Ref(v)) => (&**v).downcast_ref().unwrap(),
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternMut<'a, T>> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match &*self.borrow {
+            RuntimeValue::Extern(Extern::Mut(v)) => (&**v).downcast_ref().unwrap(),
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "method_call_expression")]
+impl<'a, 'b, T: 'static> std::ops::DerefMut for Receiver<'a, 'b, ExternMut<'a, T>> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self.borrow {
+            RuntimeValue::Extern(Extern::Mut(v)) => (&mut **v).downcast_mut().unwrap(),
+            // Wrong receiver chosen.
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg(feature = "extern_value_type")]
 impl<'a, T: 'static> ToRuntimeValue<'a> for ExternValue<T> {
     fn to_value(self) -> RuntimeValue<'a> {
@@ -115,8 +225,12 @@ impl<'a, T: 'static> ToRuntimeValue<'a> for ExternValue<T> {
 impl<'a, T: 'static> FromRuntimeValue<'a> for ExternValue<T> {
     const TYPE: Option<Type> = Some(Type::ExternValue);
 
-    fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-        if let RuntimeValue::Extern(Extern::Value(value)) = value {
+    fn type_id() -> Option<TypeId> {
+        Some(TypeId::of::<T>())
+    }
+
+    fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+        if let RuntimeValue::Extern(Extern::Value(value)) = std::mem::take(value) {
             value.downcast().ok().map(ExternValue)
         } else {
             None
@@ -133,8 +247,12 @@ impl<'a, T: 'static> ToRuntimeValue<'a> for ExternRef<'a, T> {
 impl<'a, T: 'static> FromRuntimeValue<'a> for ExternRef<'a, T> {
     const TYPE: Option<Type> = Some(Type::ExternRef);
 
-    fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-        if let RuntimeValue::Extern(Extern::Ref(value)) = value {
+    fn type_id() -> Option<TypeId> {
+        Some(TypeId::of::<T>())
+    }
+
+    fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+        if let RuntimeValue::Extern(Extern::Ref(value)) = std::mem::take(value) {
             value.downcast_ref().map(ExternRef)
         } else {
             None
@@ -151,8 +269,12 @@ impl<'a, T: 'static> ToRuntimeValue<'a> for ExternMut<'a, T> {
 impl<'a, T: 'static> FromRuntimeValue<'a> for ExternMut<'a, T> {
     const TYPE: Option<Type> = Some(Type::ExternMut);
 
-    fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-        if let RuntimeValue::Extern(Extern::Mut(value)) = value {
+    fn type_id() -> Option<TypeId> {
+        Some(TypeId::of::<T>())
+    }
+
+    fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+        if let RuntimeValue::Extern(Extern::Mut(value)) = std::mem::take(value) {
             value.downcast_mut().map(ExternMut)
         } else {
             None
@@ -169,11 +291,15 @@ macro_rules! impl_convert_argument {
             }
         }
 
-        impl<'a> FromRuntimeValue<'a> for $t {
+        impl<'a, 'b> FromRuntimeValue<'a> for $t {
             const TYPE: Option<Type> = Some(Type::$v);
 
-            fn from_value(value: RuntimeValue<'a>) -> Option<Self> {
-                if let RuntimeValue::Value(Value::$v(v)) = value {
+            fn type_id() -> Option<TypeId> {
+                Some(TypeId::of::<Value>())
+            }
+
+            fn from_value(value: &mut RuntimeValue<'a>) -> Option<Self> {
+                if let RuntimeValue::Value(Value::$v(v)) = std::mem::take(value) {
                     Some(v)
                 } else {
                     None
@@ -192,9 +318,20 @@ impl_convert_argument!(F32, f32);
 #[cfg(feature = "string_type")]
 impl_convert_argument!(String, String);
 
+/*
+fn assert_arg<'a, T>()
+where
+    for<'b> Receiver<'a, 'b, T>: FromRuntimeValue<'a>
+{}
+//fn assert_arg<'a, A: for<'b> FromRuntimeValue<'a>>() {}
+fn _test(){
+    assert_arg::<Receiver<ExternValue<()>>>();//
+}
+*/
+
 macro_rules! impl_function {
     ($($a: ident),*) => {
-        impl<'a, $($a,)* R, FUNC: FnMut($($a),*) -> Result<R, RuntimeError> + Send + Sync> Function<'a, ($($a,)*), R> for FUNC
+        impl<'a, $($a,)* R, FUNC: FnMut($($a),*) -> Result<R, RuntimeError> + Send + Sync> Function<'a, ((), ($($a,)*)), R> for FUNC
             where $($a: FromRuntimeValue<'a>,)*
                 R: ToRuntimeValue<'a> {
             const ARGS: usize = 0 $(
@@ -204,39 +341,99 @@ macro_rules! impl_function {
                 }
             )*;
 
+            fn receiver_type_id() -> Option<TypeId> {
+                None
+            }
+
             fn call(
                     &mut self,
-                    arguments: &mut [RuntimeValue<'a>],
+                    mut _arguments: &mut [RuntimeValue<'a>],
                 ) -> Result<RuntimeValue<'a>, RuntimeError> {
-                if arguments.len() != Self::ARGS {
-                    return Err(RuntimeError::WrongNumberOfArguments{expected: Self::ARGS as u16, actual: arguments.len() as u16});
+                if _arguments.len() != Self::ARGS {
+                    return Err(RuntimeError::WrongNumberOfArguments{expected: Self::ARGS as u16, actual: _arguments.len() as u16});
                 }
                 let mut _i = 0;
                 (self)($({
-                    let arg = &mut arguments[{
-                        let n = _i;
-                        _i += 1;
-                        n
-                    }];
+                    let (first, rest) = _arguments.split_at_mut(1);
+                    _arguments = rest;
+                    let arg = &mut first[0];
                     let type_of = arg.type_of();
-                    <$a>::from_value(std::mem::take(arg)).ok_or(RuntimeError::InvalidArgument{
+                    <$a>::from_value(arg).ok_or(RuntimeError::InvalidArgument{
                         expected: $a::TYPE,
                         actual: type_of
                     })?
-                }),*).map(|v| v.to_value())
+                }),*).map(move |v| v.to_value())
             }
         }
     };
 }
 
-impl_function!();
-impl_function!(A);
-impl_function!(A, B);
-impl_function!(A, B, C);
-impl_function!(A, B, C, D);
-impl_function!(A, B, C, D, E);
-impl_function!(A, B, C, D, E, F);
-impl_function!(A, B, C, D, E, F, G);
-impl_function!(A, B, C, D, E, F, G, H);
-impl_function!(A, B, C, D, E, F, G, H, I);
-impl_function!(A, B, C, D, E, F, G, H, I, J);
+// it took 4 days to figure out the lifetimes (╯°□°)╯︵ ┻━┻
+macro_rules! impl_method {
+    ($($a: ident),*) => {
+        impl<'a, RECEIVER, $($a,)* R: 'a, FUNC: for<'b> FnMut(Receiver<'a, 'b, RECEIVER>, $($a),*) -> Result<R, RuntimeError> + Send + Sync> Function<'a, (RECEIVER, (), ($($a,)*)), R> for FUNC
+            where RECEIVER: FromRuntimeValue<'a> + 'static,
+                $($a: FromRuntimeValue<'a>,)*
+                R: ToRuntimeValue<'a> {
+            const ARGS: usize = 1 $(
+                + {
+                    let _ = std::mem::size_of::<$a>();
+                    1
+                }
+            )*;
+
+            fn receiver_type_id() -> Option<TypeId> {
+                <RECEIVER>::type_id()
+            }
+
+            fn call(
+                    &mut self,
+                    mut _arguments: &mut [RuntimeValue<'a>],
+                ) -> Result<RuntimeValue<'a>, RuntimeError> {
+                if _arguments.len() != Self::ARGS {
+                    return Err(RuntimeError::WrongNumberOfArguments{expected: Self::ARGS as u16, actual: _arguments.len() as u16});
+                }
+                let mut _i = 0;
+                (self)(
+                    {
+                        let (first, rest) = _arguments.split_at_mut(1);
+                        _arguments = rest;
+                        let arg = &mut first[0];
+                        Receiver{
+                            borrow: arg,
+                            _spooky: PhantomData,
+                        }
+                    },
+                $({
+                    let (first, rest) = _arguments.split_at_mut(1);
+                    _arguments = rest;
+                    let arg = &mut first[0];
+                    let type_of = arg.type_of();
+                    <$a>::from_value(arg).ok_or(RuntimeError::InvalidArgument{
+                        expected: $a::TYPE,
+                        actual: type_of
+                    })?
+                }),*).map(move |v| v.to_value())
+            }
+        }
+    };
+}
+
+macro_rules! impl_function_and_method {
+    ($($a: ident),*) => {
+        impl_function!($($a),*);
+        impl_method!($($a),*);
+    }
+}
+
+impl_function_and_method!();
+impl_function_and_method!(A);
+impl_function_and_method!(A, B);
+impl_function_and_method!(A, B, C);
+impl_function_and_method!(A, B, C, D);
+impl_function_and_method!(A, B, C, D, E);
+impl_function_and_method!(A, B, C, D, E, F);
+impl_function_and_method!(A, B, C, D, E, F, G);
+impl_function_and_method!(A, B, C, D, E, F, G, H);
+impl_function_and_method!(A, B, C, D, E, F, G, H, I);
+impl_function_and_method!(A, B, C, D, E, F, G, H, I, J);
