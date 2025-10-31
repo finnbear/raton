@@ -3,7 +3,7 @@
 
 use super::{Extern, RuntimeError, RuntimeValue, Type};
 use crate::Value;
-use std::{any::TypeId, marker::PhantomData, ops::Deref};
+use std::any::TypeId;
 
 /// Type-erased function, callable by a script.
 pub(crate) struct ErasedFunction<'data, 'func> {
@@ -133,14 +133,16 @@ pub struct ExternMut<'a, T>(pub &'a mut T);
 /// two functions with the same name can be disambiguated by which type they are
 /// called on.
 #[cfg(feature = "method_call_expression")]
-#[repr(transparent)]
-pub struct Receiver<'a, 'b, T: 'static> {
+pub struct Receiver<'a, 'b, T>
+where
+    'a: 'b,
+{
     borrow: &'b mut RuntimeValue<'a>,
-    _spooky: PhantomData<&'b T>,
+    _spooky: std::marker::PhantomData<&'b T>,
 }
 
 #[cfg(feature = "method_call_expression")]
-impl<'a, 'b> Deref for Receiver<'a, 'b, Value> {
+impl<'a, 'b> std::ops::Deref for Receiver<'a, 'b, Value> {
     type Target = Value;
 
     fn deref(&self) -> &Self::Target {
@@ -164,7 +166,7 @@ impl<'a, 'b> std::ops::DerefMut for Receiver<'a, 'b, Value> {
 }
 
 #[cfg(feature = "method_call_expression")]
-impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternValue<T>> {
+impl<'a, 'b, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternValue<T>> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -177,7 +179,7 @@ impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternValue<T>> {
 }
 
 #[cfg(feature = "method_call_expression")]
-impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternRef<'a, T>> {
+impl<'b, 'a: 'b, 'c, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternRef<'c, T>> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -190,7 +192,7 @@ impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternRef<'a, T>> {
 }
 
 #[cfg(feature = "method_call_expression")]
-impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternMut<'a, T>> {
+impl<'b, 'a: 'b, 'c, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternMut<'c, T>> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -203,7 +205,7 @@ impl<'a, 'b, T: 'static> Deref for Receiver<'a, 'b, ExternMut<'a, T>> {
 }
 
 #[cfg(feature = "method_call_expression")]
-impl<'a, 'b, T: 'static> std::ops::DerefMut for Receiver<'a, 'b, ExternMut<'a, T>> {
+impl<'b, 'a: 'b, 'c, T: 'static> std::ops::DerefMut for Receiver<'a, 'b, ExternMut<'c, T>> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self.borrow {
             RuntimeValue::Extern(Extern::Mut(v)) => (&mut **v).downcast_mut().unwrap(),
@@ -331,7 +333,7 @@ fn _test(){
 macro_rules! impl_function {
     ($($a: ident),*) => {
         impl<'a, $($a,)* R, FUNC: FnMut($($a),*) -> Result<R, RuntimeError> + Send + Sync> Function<'a, ((), ($($a,)*)), R> for FUNC
-            where $($a: FromRuntimeValue<'a>,)*
+            where $($a: FromRuntimeValue<'a> + 'a,)*
                 R: ToRuntimeValue<'a> {
             const ARGS: usize = 0 $(
                 + {
@@ -368,10 +370,11 @@ macro_rules! impl_function {
 }
 
 // it took 4 days to figure out the lifetimes (╯°□°)╯︵ ┻━┻
+#[cfg(feature = "method_call_expression")]
 macro_rules! impl_method {
     ($($a: ident),*) => {
         impl<'a, RECEIVER, $($a,)* R: 'a, FUNC: for<'b> FnMut(Receiver<'a, 'b, RECEIVER>, $($a),*) -> Result<R, RuntimeError> + Send + Sync> Function<'a, (RECEIVER, (), ($($a,)*)), R> for FUNC
-            where RECEIVER: FromRuntimeValue<'a> + 'static,
+            where RECEIVER: FromRuntimeValue<'a> + 'a,
                 $($a: FromRuntimeValue<'a>,)*
                 R: ToRuntimeValue<'a> {
             const ARGS: usize = 1 $(
@@ -400,7 +403,7 @@ macro_rules! impl_method {
                         let arg = &mut first[0];
                         Receiver{
                             borrow: arg,
-                            _spooky: PhantomData,
+                            _spooky: std::marker::PhantomData,
                         }
                     },
                 $({
@@ -421,6 +424,7 @@ macro_rules! impl_method {
 macro_rules! impl_function_and_method {
     ($($a: ident),*) => {
         impl_function!($($a),*);
+        #[cfg(feature = "method_call_expression")]
         impl_method!($($a),*);
     }
 }
