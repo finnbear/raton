@@ -1,6 +1,6 @@
 
 fn simple(a) {
-    a
+    host_call(a);
 }
 
 fn million() {
@@ -28,15 +28,15 @@ fn five(n) {
     ret
 }
 
-fn call_on_receiver(a, b, c) {
+fn call(a, b, c) {
     a.host_call(b);
-    a.host_call(c);
+    a.host_call2(c);
 }
 
 fn sum_to_n(n) {
     let i = 0;
     let sum = 0;
-    while (i < n) {
+    while (i < n && true) {
         i = i + 1;
         sum = sum + i;
     }
@@ -52,10 +52,10 @@ fn call_first(a, b) {
 }
 
 fn max(a, b) {
-    if (a > b) {
-        return a;
+    if (a > b && b < a || false) {
+        return a * b - a / b;
     } else {
-        return b;
+        return b % b - a + b;
     }
 }
 

@@ -39,19 +39,19 @@ fn target(src: &str) {
             .with_max_instructions(10000)
             .with_max_stack_depth(10)
             .with_host_function(
-                "a",
+                "host_call",
                 |_: ExternValue<u8>, _: ExternRef<u16>, _: ExternMut<u32>| Ok(Value::Null),
             )
             .with_host_function(
-                "b",
+                "host_call2",
                 |_: ExternValue<u16>, _: ExternRef<u32>, _: ExternMut<u64>| Ok(Value::Null),
             )
-            .with_host_function("a", |_: Receiver<ExternValue<u8>>| Ok(Value::Null))
-            .with_host_function("a", |_: Receiver<ExternValue<u16>>| Ok(Value::Null))
-            .with_host_function("a", |_: Receiver<ExternRef<u8>>| Ok(Value::Null))
-            .with_host_function("a", |_: Receiver<ExternRef<u16>>| Ok(Value::Null))
-            .with_host_function("a", |_: Receiver<ExternMut<u32>>| Ok(Value::Null))
-            .with_host_function("a", |_: Receiver<ExternMut<u16>>| Ok(Value::Null));
+            .with_host_function("host_call", |_: Receiver<ExternValue<u8>>| Ok(Value::Null))
+            .with_host_function("host_call", |_: Receiver<ExternValue<u16>>| Ok(Value::Null))
+            .with_host_function("host_call", |_: Receiver<ExternRef<u8>>| Ok(Value::Null))
+            .with_host_function("host_call", |_: Receiver<ExternRef<u16>>| Ok(Value::Null))
+            .with_host_function("host_call", |_: Receiver<ExternMut<u32>>| Ok(Value::Null))
+            .with_host_function("host_call", |_: Receiver<ExternMut<u16>>| Ok(Value::Null));
 
         let result = vm.call3(
             &func,
