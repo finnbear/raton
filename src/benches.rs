@@ -40,6 +40,12 @@ use test::{black_box, Bencher};
 // test benches::million_iterations ... bench:  57,300,537.00 ns/iter (+/- 9,191,647.60)
 // test benches::overhead           ... bench:          45.19 ns/iter (+/- 6.66)
 
+// Oct 31 2025 (after finishing receivers)
+// test benches::fib_28             ... bench: 388,137,459.00 ns/iter (+/- 61,098,549.25)
+// test benches::fn_call_overhead   ... bench:          44.78 ns/iter (+/- 27.50)
+// test benches::million_iterations ... bench:  55,008,289.20 ns/iter (+/- 5,612,928.22)
+// test benches::new_vm_overhead    ... bench:         201.80 ns/iter (+/- 7.73)
+
 #[allow(unused)]
 fn bench_execute<'a>(
     b: &mut Bencher,
@@ -65,7 +71,7 @@ fn bench_execute<'a>(
 
 #[bench]
 #[cfg(feature = "bool_type")]
-fn overhead(b: &mut Bencher) {
+fn fn_call_overhead(b: &mut Bencher) {
     let src = r#"
         fn simple(a) {
             a
@@ -79,6 +85,34 @@ fn overhead(b: &mut Bencher) {
         &mut [RuntimeValue::Value(Value::Bool(true))],
         RuntimeValue::Value(Value::Bool(true)),
     );
+}
+
+#[bench]
+#[cfg(feature = "bool_type")]
+fn new_vm_overhead(b: &mut Bencher) {
+    let src = r#"
+        fn simple(a) {
+            a
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let program = CodeGenerator::new().generate_program(&ast).unwrap();
+
+    b.iter(move || {
+        let mut vm = VirtualMachine::new(&program)
+            .with_type_casting()
+            .with_max_instructions(None)
+            .with_max_stack_depth(None);
+
+        let result = black_box(&mut vm)
+            .call(
+                black_box("simple"),
+                black_box(&mut [RuntimeValue::Value(Value::Bool(true))]),
+            )
+            .unwrap();
+        assert_eq!(result, RuntimeValue::Value(Value::Bool(true)));
+    });
 }
 
 #[bench]

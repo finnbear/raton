@@ -49,7 +49,7 @@ fn sum_to_n(n) {
 
 ## Modular language features
 - [x] `if`, `else` (optional `if_expression` feature)
-- [x] `.method()` (optional `method_call_expression`)
+- [x] `.method()` (optional `method_call_expression` feature)
 - [x] `while`, `break`, `continue` (optional `while_loop` feature)
 - [x] `//` comments (optional `single_line_comment` feature)
 - [x] `/* */` comments (optional `multi_line_comment` feature)
@@ -67,6 +67,12 @@ fn sum_to_n(n) {
 - [ ] `no_std`
 
 ## Performance
+
+Creating a new VM with several host functions requires ~2 heap allocations and has
+an overhead on the order of 150ns.
+
+Calling a function on a created VM requires ~0 heap allocatinos and has an
+overhead on the order of 50ns.
 
 Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` on an i7-7700k (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
 
