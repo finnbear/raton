@@ -1,7 +1,7 @@
 //! Run compiled bytecode.
 
 use crate::{bytecode::*, BinaryOperator, UnaryOperator, Value};
-use std::{borrow::Cow, collections::HashMap};
+use std::{any::TypeId, borrow::Cow};
 use thiserror::Error;
 
 mod function;
@@ -11,14 +11,14 @@ pub use value::*;
 mod ty;
 pub use ty::*;
 
-/// A Rust function that the script can call.
-pub type HostFunction<'data> =
-    Box<dyn FnMut(&[RuntimeValue<'data>]) -> Result<RuntimeValue<'data>, RuntimeError>>;
-
 /// Interprets bytecode.
-pub struct VirtualMachine<'code, 'data> {
+pub struct VirtualMachine<'code, 'func, 'data> {
     program: Cow<'code, ProgramBytecode>,
-    host_functions: HashMap<Cow<'code, str>, ErasedFunction<'data>>,
+    #[allow(clippy::type_complexity)]
+    host_functions: hashbrown::HashMap<
+        (Option<(TypeId, Option<Type>)>, Cow<'func, str>),
+        ErasedFunction<'data, 'func>,
+    >,
     max_instructions: Option<u32>,
     max_stack_depth: Option<u8>,
     // #[cfg(feature = "f32_type")]
@@ -85,7 +85,7 @@ macro_rules! call_n {
     };
 }
 
-impl<'code, 'data> VirtualMachine<'code, 'data> {
+impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
     /// Create a configurable virtual machine for executing bytecode.
     ///
     /// Each virtual machine has a growable heap-allocated stack that
@@ -103,7 +103,7 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
     fn new_impl(program: Cow<'code, ProgramBytecode>) -> Self {
         Self {
             program,
-            host_functions: HashMap::new(),
+            host_functions: hashbrown::HashMap::default(),
             max_instructions: Some(100_000_000),
             max_stack_depth: Some(50),
             stack: Vec::new(),
@@ -227,13 +227,15 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
     /// This performs a heap allocation, unless your function does not capture
     /// state from its environment. This is true for all function items, all
     /// function pointers, and some closures.
-    pub fn with_host_function<A, R, N: Into<Cow<'code, str>>, F: Function<'data, A, R> + 'data>(
+    pub fn with_host_function<A, R, N: Into<Cow<'func, str>>, F: Function<'data, A, R> + 'func>(
         mut self,
         name: N,
         func: F,
     ) -> Self {
-        self.host_functions
-            .insert(name.into(), ErasedFunction::new(func));
+        self.host_functions.insert(
+            (F::receiver_type_id_extern_type(), name.into()),
+            ErasedFunction::new(func),
+        );
         self
     }
 
@@ -596,7 +598,7 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
                         pc += 1;
                     }
                 }
-                Instruction::CallByName(name, arg_count) => {
+                Instruction::CallByName(receiver_location, name, arg_count) => {
                     if self.max_stack_depth == Some(self.call_stack.len() as u8) {
                         return Err(RuntimeError::StackOverflow);
                     }
@@ -611,13 +613,50 @@ impl<'code, 'data> VirtualMachine<'code, 'data> {
                     let args =
                         &mut self.stack[first_variable..first_variable + *arg_count as usize];
 
-                    let result = if let Some(host_fn) = self.host_functions.get_mut(name.as_str()) {
-                        host_fn.call(args)?
+                    let receiver_type_id_extern_type =
+                        if matches!(receiver_location, ReceiverLocation::None) {
+                            None
+                        } else {
+                            args.first().map(|a| a.receiver_type_id_extern_type())
+                        };
+                    // Circumvent lifetime requirements using `raw_entry_mut` API.
+                    let key = (receiver_type_id_extern_type, Cow::Borrowed(name.as_str()));
+                    fn compute_hash<K: std::hash::Hash + ?Sized, S: std::hash::BuildHasher>(
+                        hash_builder: &S,
+                        key: &K,
+                    ) -> u64 {
+                        use core::hash::Hasher;
+                        let mut state = hash_builder.build_hasher();
+                        key.hash(&mut state);
+                        state.finish()
+                    }
+                    let hash = compute_hash(self.host_functions.hasher(), &key);
+                    let result = if let hashbrown::hash_map::RawEntryMut::Occupied(host_fn) = self
+                        .host_functions
+                        .raw_entry_mut()
+                        .from_hash(hash, |k| k == &key)
+                    {
+                        host_fn.into_mut().call(args)?
                     } else {
                         return Err(RuntimeError::UndefinedFunction {
                             name: name.to_string(),
                         });
                     };
+
+                    if let &ReceiverLocation::Variable(index) = receiver_location {
+                        let relative_index = self
+                            .call_stack
+                            .last_mut()
+                            .map(|f| f.first_variable)
+                            .unwrap_or(0) as usize
+                            + index as usize;
+                        let taken = std::mem::take(&mut args[0]);
+                        let val = self
+                            .stack
+                            .get_mut(relative_index)
+                            .ok_or(RuntimeError::UndefinedVariable { index })?;
+                        *val = taken;
+                    }
 
                     self.stack.truncate(first_variable);
                     self.stack.push(result);

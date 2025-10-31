@@ -1,6 +1,9 @@
 use super::Type;
 use crate::Value;
-use std::{any::Any, fmt::Debug};
+use std::{
+    any::{Any, TypeId},
+    fmt::Debug,
+};
 
 /// Values that may exist at runtime.
 #[derive(Debug)]
@@ -41,6 +44,18 @@ impl<'a> RuntimeValue<'a> {
                 expected: Type::Bool,
                 actual: self.type_of(),
             }),
+        }
+    }
+
+    pub(crate) fn receiver_type_id_extern_type(&self) -> (TypeId, Option<Type>) {
+        match self {
+            Self::Value(_) => (TypeId::of::<Value>(), None),
+            Self::Extern(e) => match e {
+                #[cfg(feature = "extern_value_type")]
+                Extern::Value(v) => ((**v).type_id(), Some(Type::ExternValue)),
+                Extern::Ref(r) => ((**r).type_id(), Some(Type::ExternRef)),
+                Extern::Mut(m) => ((**m).type_id(), Some(Type::ExternMut)),
+            },
         }
     }
 }

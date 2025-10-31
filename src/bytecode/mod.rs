@@ -28,13 +28,28 @@ pub enum Instruction {
     #[cfg(feature = "bool_type")]
     JumpIfFalse(u32),
     /// Call the named function with the given number of arguments.
-    CallByName(String, u16),
+    CallByName(ReceiverLocation, String, u16),
     /// Call the function at the given address with the given number of arguments.
     CallByAddress(u32, u16),
     /// Return from the current function.
     Return,
     /// Discard an item popped from the stack.
     Pop,
+}
+
+/// Where the receiver is located in the virtual machine's memory.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
+#[non_exhaustive]
+pub enum ReceiverLocation {
+    /// Variable.
+    Variable(u16),
+    /// Before the other arguments on the stack.
+    Temporary,
+    /// A function call, not a method call.
+    None,
 }
 
 /// A bytecode instruction stream for a whole program, with known entry

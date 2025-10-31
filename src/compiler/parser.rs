@@ -320,6 +320,32 @@ fn parse_literal<
 #[derive(Clone)]
 enum PostfixOp {
     Call(Vec<Expression>),
+    #[cfg(feature = "method_call_expression")]
+    MethodCall(Identifier, Vec<Expression>),
+}
+
+#[cfg(feature = "method_call_expression")]
+fn method_call<
+    'a,
+    E: NomParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ()>,
+>(
+    i: &'a str,
+) -> IResult<&'a str, PostfixOp, E> {
+    map(
+        preceded(
+            char('.'),
+            (
+                cut(parse_identifier),
+                cut(delimited(
+                    ws(char('(')),
+                    separated_list0(ws(char(',')), expression),
+                    ws(cut(char(')'))),
+                )),
+            ),
+        ),
+        |(i, a)| PostfixOp::MethodCall(i, a),
+    )
+    .parse(i)
 }
 
 fn function_call<
@@ -440,7 +466,11 @@ fn expression<
             unary_op(2, value(UnaryOperator::Negate, ws(tag("-")))),
         )),
         // Postfix operators (function calls)
-        unary_op(1, function_call),
+        unary_op(1, alt((
+            #[cfg(feature = "method_call_expression")]
+            method_call,
+            function_call,
+        ))),
         // Binary operators with precedence levels
         alt((
             // Level 3: Multiplicative
@@ -497,6 +527,8 @@ fn expression<
             match op {
                 Prefix(operator, operand) => Ok(Expression::Unary(UnaryExpression { operator, operand: Box::new(operand) })),
                 Postfix(Expression::Variable(name), PostfixOp::Call(arguments)) => Ok(Expression::Call(CallExpression{identifier: name, arguments})),
+                #[cfg(feature = "method_call_expression")]
+                Postfix(receiver, PostfixOp::MethodCall(name, arguments)) => Ok(Expression::MethodCall(MethodCallExpression{receiver: Box::new(receiver), identifier: name, arguments})),
                 Postfix(_, PostfixOp::Call(_)) => Err(()),
                 Binary(left, operator, right) => Ok(Expression::Binary(BinaryExpression{operator, left: Box::new(left), right: Box::new(right)})),
             }

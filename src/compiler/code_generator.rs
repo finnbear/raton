@@ -206,15 +206,48 @@ impl CodeGenerator {
                 self.generate_expr(right)?;
                 self.emit(Instruction::BinaryOperator(operator.clone()))?;
             }
-            Expression::Call(CallExpression {
-                identifier: name,
+            #[cfg(feature = "method_call_expression")]
+            Expression::MethodCall(MethodCallExpression {
+                receiver,
+                identifier,
                 arguments,
             }) => {
+                if arguments.len() + 1 > self.max_local_variables as usize {
+                    // TODO: more specialized error.
+                    return Err(CompileError::MaxLocalVariablesExceeded);
+                }
+
+                self.generate_expr(receiver)?;
+                let receiver_location = if let Expression::Variable(name) = &**receiver {
+                    let location = self.variable_index(name)?;
+                    ReceiverLocation::Variable(location)
+                } else {
+                    ReceiverLocation::Temporary
+                };
                 for argument in arguments {
                     self.generate_expr(argument)?;
                 }
                 self.emit(Instruction::CallByName(
-                    name.clone(),
+                    receiver_location,
+                    identifier.clone(),
+                    // TODO: Overflow handling.
+                    arguments.len() as u16 + 1,
+                ))?;
+            }
+            Expression::Call(CallExpression {
+                identifier,
+                arguments,
+            }) => {
+                if arguments.len() > self.max_local_variables as usize {
+                    // TODO: more specialized error.
+                    return Err(CompileError::MaxLocalVariablesExceeded);
+                }
+                for argument in arguments {
+                    self.generate_expr(argument)?;
+                }
+                self.emit(Instruction::CallByName(
+                    ReceiverLocation::None,
+                    identifier.clone(),
                     arguments.len() as u16,
                 ))?;
             }
@@ -384,7 +417,7 @@ impl CodeGenerator {
             self.generate_function(function)?;
         }
         for instruction in &mut self.instructions {
-            if let Instruction::CallByName(name, args) = instruction {
+            if let Instruction::CallByName(ReceiverLocation::None, name, args) = instruction {
                 if let Some(func) = self.public_functions.get(&*name) {
                     if func.arguments != *args {
                         return Err(CompileError::ArgumentsMismatch);

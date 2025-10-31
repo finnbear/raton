@@ -49,6 +49,7 @@ fn sum_to_n(n) {
 
 ## Modular language features
 - [x] `if`, `else` (optional `if_expression` feature)
+- [x] `.method()` (optional `method_call_expression`)
 - [x] `while`, `break`, `continue` (optional `while_loop` feature)
 - [x] `//` comments (optional `single_line_comment` feature)
 - [x] `/* */` comments (optional `multi_line_comment` feature)
@@ -66,7 +67,7 @@ fn sum_to_n(n) {
 
 ## Performance
 
-Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
+Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` on an i7-7700k (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
 
 ## Security
 
