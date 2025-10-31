@@ -72,4 +72,4 @@ jobs:
       - name: Fuzz (virtual machine)
         run: RUST_BACKTRACE=1 cargo fuzz run virtual_machine -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5
       - name: Fuzz (parser)
-        run: RUST_BACKTRACE=1 cargo fuzz run parser -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5
+        run: RUST_BACKTRACE=1 cargo fuzz run parser -- -max_total_time=300 -rss_limit_mb=4096 -timeout=5 -seed_inputs="./fuzz/parser_seed.txt"

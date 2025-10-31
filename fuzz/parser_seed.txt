@@ -1,0 +1,74 @@
+
+fn simple(a) {
+    a
+}
+
+fn million() {
+    let x = 1000000;
+    while x > 0 {
+        x = x - 1;
+    }
+}
+
+fn fib(n) {
+    if n < 2 {
+        n
+    } else {
+        fib(n-1) + fib(n-2)
+    }
+}
+
+fn five(n) {
+    let i = 0;
+    let ret = 0;
+    while (i < 5) {
+        ret = fib(n);
+        i = i + 1;
+    }
+    ret
+}
+
+fn call_on_receiver(a, b, c) {
+    a.host_call(b);
+    a.host_call(c);
+}
+
+fn sum_to_n(n) {
+    let i = 0;
+    let sum = 0;
+    while (i < n) {
+        i = i + 1;
+        sum = sum + i;
+    }
+    return sum;
+}
+
+fn first(a, b) {
+    a
+}
+
+fn call_first(a, b) {
+    first(a, b)
+}
+
+fn max(a, b) {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
+}
+
+fn scope() {
+    {
+        let a = null;
+    };
+    return a;
+}
+
+fn enterprise_grade() {
+    // hello
+    let /* hi */ a /* hi */ = /* hi */ null;
+    /* foo
+       bar */
+}
