@@ -375,6 +375,28 @@ fn method_call_on_mut() {
 }
 
 #[test]
+#[cfg(feature = "f32_type")]
+fn error_on_nan() {
+    use core::f32;
+
+    let src = r#"
+        fn sub(a, b) {
+            a - b
+        }
+    "#;
+
+    let ast = Parser::new().parse(src).unwrap();
+    let program = CodeGenerator::new().generate_program(&ast).unwrap();
+
+    let mut vm = VirtualMachine::new(&program).with_error_on_nan(true);
+
+    let result = vm
+        .call2("sub", Value::F32(f32::INFINITY), Value::F32(f32::INFINITY))
+        .unwrap_err();
+    assert!(matches!(result, RuntimeError::ProducedNan));
+}
+
+#[test]
 fn undefined() {
     let src = r#"
         fn undefined() {

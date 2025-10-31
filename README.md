@@ -63,6 +63,7 @@ fn sum_to_n(n) {
 - [x] Portable to any platform, 32 bits or higher, supported by Rust
 - [x] Parsing, code generation, and runtime have configurable limits
 - [x] Error handling and reporting
+- [x] Optional error if an operation produces `f32::NaN`
 - [ ] `no_std`
 
 ## Performance

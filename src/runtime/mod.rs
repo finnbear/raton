@@ -21,8 +21,8 @@ pub struct VirtualMachine<'code, 'func, 'data> {
     >,
     max_instructions: Option<u32>,
     max_stack_depth: Option<u8>,
-    // #[cfg(feature = "f32_type")]
-    // error_on_nan: bool
+    #[cfg(feature = "f32_type")]
+    error_on_nan: bool,
     stack: Vec<RuntimeValue<'data>>,
     call_stack: Vec<CallFrame>,
 }
@@ -61,6 +61,9 @@ pub enum RuntimeError {
     IllegalInstruction,
     #[error("bytecode ended abruptly")]
     BytecodeEndedAbruptly,
+    #[cfg(feature = "f32_type")]
+    #[error("a floating point operation produced an illegal NaN")]
+    ProducedNan,
 }
 
 macro_rules! call_n {
@@ -108,6 +111,8 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
             max_stack_depth: Some(50),
             stack: Vec::new(),
             call_stack: Vec::new(),
+            #[cfg(feature = "f32_type")]
+            error_on_nan: false,
         }
     }
 
@@ -130,6 +135,22 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
     /// Default: 50
     pub fn with_max_stack_depth<T: Into<Option<u8>>>(mut self, max: T) -> Self {
         self.max_stack_depth = max.into();
+        self
+    }
+
+    /// If `true`, all floating point computation in the script will produce an
+    /// error result during evalutation if it produces [`f32::NAN`] that did not
+    /// previously exist. It is  your responsibility to prevent [`f32::NAN`] in
+    /// values passed to scripts as arguments or host function return values.
+    ///
+    /// This can be useful for cross-platform determinism, because NAN generally
+    /// have a platform-dependent bit pattern but whether a NAN is produced is
+    /// generally defined by IEEE-754.
+    ///
+    /// Default: false
+    #[cfg(feature = "f32_type")]
+    pub fn with_error_on_nan(mut self, error: bool) -> Self {
+        self.error_on_nan = error;
         self
     }
 
@@ -358,6 +379,8 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             )),
                             #[cfg(feature = "f32_type")]
                             RuntimeValue::Value(Value::F32(f)) => {
+                                // Omit `f32::NAN` check because this never produces
+                                // a new `f32::NAN`.
                                 RuntimeValue::Value(Value::F32(-f))
                             }
                             _ => {
@@ -387,7 +410,10 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             (
                                 &RuntimeValue::Value(Value::F32(l)),
                                 &RuntimeValue::Value(Value::F32(r)),
-                            ) => RuntimeValue::Value(Value::F32(l + r)),
+                            ) => RuntimeValue::Value(Value::F32(nan_check(
+                                l + r,
+                                self.error_on_nan,
+                            )?)),
                             #[cfg(feature = "string_type")]
                             (
                                 RuntimeValue::Value(Value::String(l)),
@@ -412,7 +438,10 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             (
                                 &RuntimeValue::Value(Value::F32(l)),
                                 &RuntimeValue::Value(Value::F32(r)),
-                            ) => RuntimeValue::Value(Value::F32(l - r)),
+                            ) => RuntimeValue::Value(Value::F32(nan_check(
+                                l - r,
+                                self.error_on_nan,
+                            )?)),
                             _ => {
                                 return Err(RuntimeError::TypeMismatch {
                                     expected: left.type_of(),
@@ -432,7 +461,10 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             (
                                 &RuntimeValue::Value(Value::F32(l)),
                                 &RuntimeValue::Value(Value::F32(r)),
-                            ) => RuntimeValue::Value(Value::F32(l * r)),
+                            ) => RuntimeValue::Value(Value::F32(nan_check(
+                                l * r,
+                                self.error_on_nan,
+                            )?)),
                             _ => {
                                 return Err(RuntimeError::TypeMismatch {
                                     expected: left.type_of(),
@@ -457,7 +489,10 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             (
                                 &RuntimeValue::Value(Value::F32(l)),
                                 &RuntimeValue::Value(Value::F32(r)),
-                            ) => RuntimeValue::Value(Value::F32(l / r)),
+                            ) => RuntimeValue::Value(Value::F32(nan_check(
+                                l / r,
+                                self.error_on_nan,
+                            )?)),
                             _ => {
                                 return Err(RuntimeError::TypeMismatch {
                                     expected: left.type_of(),
@@ -480,7 +515,10 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                             (
                                 &RuntimeValue::Value(Value::F32(l)),
                                 &RuntimeValue::Value(Value::F32(r)),
-                            ) => RuntimeValue::Value(Value::F32(l % r)),
+                            ) => RuntimeValue::Value(Value::F32(nan_check(
+                                l % r,
+                                self.error_on_nan,
+                            )?)),
                             _ => {
                                 return Err(RuntimeError::TypeMismatch {
                                     expected: left.type_of(),
@@ -710,4 +748,13 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
 struct CallFrame {
     first_variable: u32,
     return_address: u32,
+}
+
+#[cfg(feature = "f32_type")]
+fn nan_check(v: f32, error_on_nan: bool) -> Result<f32, RuntimeError> {
+    if error_on_nan && v.is_nan() {
+        Err(RuntimeError::ProducedNan)
+    } else {
+        Ok(v)
+    }
 }
