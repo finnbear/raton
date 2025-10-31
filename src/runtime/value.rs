@@ -47,15 +47,15 @@ impl<'a> RuntimeValue<'a> {
         }
     }
 
-    pub(crate) fn receiver_type_id(&self) -> Option<TypeId> {
+    pub(crate) fn receiver_type_id_extern_type(&self) -> (TypeId, Option<Type>) {
         match self {
-            Self::Value(_) => Some(TypeId::of::<Value>()),
-            Self::Extern(e) => Some(match e {
+            Self::Value(_) => (TypeId::of::<Value>(), None),
+            Self::Extern(e) => match e {
                 #[cfg(feature = "extern_value_type")]
-                Extern::Value(v) => (&**v).type_id(),
-                Extern::Ref(r) => (&**r).type_id(),
-                Extern::Mut(m) => (&**m).type_id(),
-            }),
+                Extern::Value(v) => ((&**v).type_id(), Some(Type::ExternValue)),
+                Extern::Ref(r) => ((&**r).type_id(), Some(Type::ExternRef)),
+                Extern::Mut(m) => ((&**m).type_id(), Some(Type::ExternMut)),
+            },
         }
     }
 }

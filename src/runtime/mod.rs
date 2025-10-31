@@ -14,8 +14,10 @@ pub use ty::*;
 /// Interprets bytecode.
 pub struct VirtualMachine<'code, 'func, 'data> {
     program: Cow<'code, ProgramBytecode>,
-    host_functions:
-        hashbrown::HashMap<(Option<TypeId>, Cow<'func, str>), ErasedFunction<'data, 'func>>,
+    host_functions: hashbrown::HashMap<
+        (Option<(TypeId, Option<Type>)>, Cow<'func, str>),
+        ErasedFunction<'data, 'func>,
+    >,
     max_instructions: Option<u32>,
     max_stack_depth: Option<u8>,
     // #[cfg(feature = "f32_type")]
@@ -230,7 +232,7 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
         func: F,
     ) -> Self {
         self.host_functions.insert(
-            (F::receiver_type_id(), name.into()),
+            (F::receiver_type_id_extern_type(), name.into()),
             ErasedFunction::new(func),
         );
         self
@@ -610,13 +612,14 @@ impl<'code, 'func, 'data> VirtualMachine<'code, 'func, 'data> {
                     let args =
                         &mut self.stack[first_variable..first_variable + *arg_count as usize];
 
-                    let receiver_type_id = if matches!(receiver_location, ReceiverLocation::None) {
-                        None
-                    } else {
-                        args.get(0).map(|a| a.receiver_type_id()).flatten()
-                    };
+                    let receiver_type_id_extern_type =
+                        if matches!(receiver_location, ReceiverLocation::None) {
+                            None
+                        } else {
+                            args.get(0).map(|a| a.receiver_type_id_extern_type())
+                        };
                     // Circumvent lifetime requirements using `raw_entry_mut` API.
-                    let key = (receiver_type_id, Cow::Borrowed(name.as_str()));
+                    let key = (receiver_type_id_extern_type, Cow::Borrowed(name.as_str()));
                     fn compute_hash<K: std::hash::Hash + ?Sized, S: std::hash::BuildHasher>(
                         hash_builder: &S,
                         key: &K,

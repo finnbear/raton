@@ -37,7 +37,7 @@ pub trait Function<'a, A, R>: Send + Sync {
     const ARGS: usize;
 
     /// Get the [`TypeId`] of the receiver, if this is a method.
-    fn receiver_type_id() -> Option<TypeId>;
+    fn receiver_type_id_extern_type() -> Option<(TypeId, Option<Type>)>;
 
     /// Call the function.
     fn call(
@@ -165,7 +165,7 @@ impl<'a, 'b> std::ops::DerefMut for Receiver<'a, 'b, Value> {
     }
 }
 
-#[cfg(feature = "method_call_expression")]
+#[cfg(all(feature = "method_call_expression", feature = "extern_value_type"))]
 impl<'a, 'b, T: 'static> std::ops::Deref for Receiver<'a, 'b, ExternValue<T>> {
     type Target = T;
 
@@ -342,7 +342,7 @@ macro_rules! impl_function {
                 }
             )*;
 
-            fn receiver_type_id() -> Option<TypeId> {
+            fn receiver_type_id_extern_type() -> Option<(TypeId, Option<Type>)> {
                 None
             }
 
@@ -384,8 +384,15 @@ macro_rules! impl_method {
                 }
             )*;
 
-            fn receiver_type_id() -> Option<TypeId> {
-                <RECEIVER>::type_id()
+            fn receiver_type_id_extern_type() -> Option<(TypeId, Option<Type>)> {
+                <RECEIVER>::type_id().map(|type_id| (type_id, RECEIVER::TYPE.filter(|t| {
+                    match t {
+                        Type::ExternRef | Type::ExternMut => true,
+                        #[cfg(feature = "extern_value_type")]
+                        Type::ExternValue => true,
+                        _ => false,
+                    }
+                })))
             }
 
             fn call(
