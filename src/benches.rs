@@ -46,6 +46,13 @@ use test::{black_box, Bencher};
 // test benches::million_iterations ... bench:  55,008,289.20 ns/iter (+/- 5,612,928.22)
 // test benches::new_vm_overhead    ... bench:         201.80 ns/iter (+/- 7.73)
 
+// Oct 31 2025 (after using BTreeMap for ProgramBytecode)
+// test benches::fib_28             ... bench: 408,173,838.70 ns/iter (+/- 53,866,307.14)
+// test benches::fn_call_overhead   ... bench:          40.12 ns/iter (+/- 0.29)
+// test benches::host_call_overhead ... bench:          58.48 ns/iter (+/- 0.37)
+// test benches::million_iterations ... bench:  56,130,105.00 ns/iter (+/- 3,751,664.67)
+// test benches::new_vm_overhead    ... bench:         182.75 ns/iter (+/- 12.17)
+
 #[allow(unused)]
 fn bench_execute<'a>(
     b: &mut Bencher,
@@ -72,9 +79,19 @@ fn bench_execute<'a>(
 #[bench]
 #[cfg(feature = "bool_type")]
 fn fn_call_overhead(b: &mut Bencher) {
+    // Make sure there are multiple items in the public function map,
+    // so the lookup isn't trivial.
     let src = r#"
         fn simple(a) {
             a
+        }
+
+        fn decoy1(a) {
+            !a
+        }
+
+        fn decoy2(a) {
+            !a
         }
     "#;
 
@@ -84,6 +101,24 @@ fn fn_call_overhead(b: &mut Bencher) {
         "simple",
         &mut [RuntimeValue::Value(Value::Bool(true))],
         RuntimeValue::Value(Value::Bool(true)),
+    );
+}
+
+#[bench]
+#[cfg(all(feature = "bool_type", feature = "i32_type"))]
+fn host_call_overhead(b: &mut Bencher) {
+    let src = r#"
+        fn simple(a) {
+            i32(a)
+        }
+    "#;
+
+    bench_execute(
+        b,
+        src,
+        "simple",
+        &mut [RuntimeValue::Value(Value::Bool(true))],
+        RuntimeValue::Value(Value::I32(1)),
     );
 }
 

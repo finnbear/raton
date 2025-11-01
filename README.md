@@ -68,11 +68,15 @@ fn sum_to_n(n) {
 
 ## Performance
 
-Creating a new VM with several host functions requires ~2 heap allocations and has
-an overhead on the order of 150ns.
+### Latency
 
-Calling a function on a created VM requires ~0 heap allocations and has an
-overhead on the order of 50ns.
+| Operation               | Overhead    | Heap allocations (amortized) |
+| ----------------------- | ----------- | ---------------------------- |
+| Create VM (4 host fn's) | 150ns       | 2                            |
+| Host -> script fn call  | 50ns        | 0                            |
+| Script -> host fn call  | 20ns        | 0                            |
+
+### Throughput
 
 Ratón takes ~0.4s on `Fibonacci` and ~0.05s on `1M Loop` on an i7-7700k (see [Rhai benchmarks](https://rhai.rs/book/about/benchmarks.html)).
 
@@ -82,6 +86,9 @@ Ratón is designed to handle untrusted or malicious source code, asts, or byteco
 without panicking, exhausting memory, memory unsafety, exponential time complexity,
 or infinite loop. Unsafe code is forbidden, and each component has a fuzzer that
 tests it against arbitrary inputs.
+
+TODO:
+- [ ] Limit length of string values
 
 You are responsible for using the limits, such as on instructions and call stack
 depth, that it provides.

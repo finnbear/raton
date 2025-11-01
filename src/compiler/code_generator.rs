@@ -1,10 +1,10 @@
 use crate::{ast::*, bytecode::*, Value};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use thiserror::Error;
 
 /// Turns an abstract syntax tree into bytecode.
 pub struct CodeGenerator {
-    public_functions: HashMap<Identifier, PublicFunction>,
+    public_functions: BTreeMap<Identifier, PublicFunction>,
     instructions: Vec<Instruction>,
     variable_stack: Vec<Vec<String>>,
     variable_count: u16,

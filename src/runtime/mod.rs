@@ -23,6 +23,7 @@ pub struct VirtualMachine<'code, 'func, 'data> {
     max_stack_depth: Option<u8>,
     #[cfg(feature = "f32_type")]
     error_on_nan: bool,
+    // max_string_length: Option<u32>,
     stack: Vec<RuntimeValue<'data>>,
     call_stack: Vec<CallFrame>,
 }

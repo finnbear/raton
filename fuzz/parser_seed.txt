@@ -24,6 +24,8 @@ fn five(n) {
     while (i < 5) {
         ret = fib(n);
         i = i + 1;
+        continue;
+        break;
     }
     ret
 }

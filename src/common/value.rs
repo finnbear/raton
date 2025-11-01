@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use std::fmt::{self, Display};
+use std::hash::Hash;
 
 use crate::runtime::Type;
 
@@ -27,6 +28,40 @@ pub enum Value {
     /// A UTF-8 string.
     #[cfg(feature = "string_type")]
     String(String),
+}
+
+impl Hash for Value {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Null => {
+                state.write_u8(2);
+            }
+            #[cfg(feature = "bool_type")]
+            &Self::Bool(b) => {
+                // 0 or 1.
+                state.write_u8(b as u8);
+            }
+            #[cfg(feature = "i32_type")]
+            &Self::I32(i) => {
+                state.write_i32(i);
+            }
+            #[cfg(feature = "f32_type")]
+            &Self::F32(f) => {
+                // `f == 0.0` is so `0.0` and `-0.0` hash the same.
+                //
+                // The NaN check limits cross-platform non-determinism.
+                if f == 0.0 || f.is_nan() {
+                    state.write_u8(3u8);
+                } else {
+                    state.write_u32(f.to_bits());
+                }
+            }
+            #[cfg(feature = "string_type")]
+            Self::String(s) => {
+                s.hash(state);
+            }
+        }
+    }
 }
 
 impl Value {

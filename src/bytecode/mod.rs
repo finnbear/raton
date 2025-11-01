@@ -1,10 +1,10 @@
 //! Bytecode type definitions.
 
 use crate::{BinaryOperator, UnaryOperator, Value};
-use std::collections::HashMap;
+use std::{collections::BTreeMap, hash::Hash};
 
 /// A single bytecode instruction, which may contain arguments.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -38,7 +38,7 @@ pub enum Instruction {
 }
 
 /// Where the receiver is located in the virtual machine's memory.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -54,7 +54,7 @@ pub enum ReceiverLocation {
 
 /// A bytecode instruction stream for a whole program, with known entry
 /// points for public functions.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
@@ -62,13 +62,13 @@ pub enum ReceiverLocation {
 #[non_exhaustive]
 pub struct ProgramBytecode {
     /// Information on public functions, callable from outside the program.
-    pub public_functions: HashMap<String, PublicFunction>,
+    pub public_functions: BTreeMap<String, PublicFunction>,
     /// The bytecode instruction stream of the program.
     pub instructions: Vec<Instruction>,
 }
 
 /// Information on a public function, allowing it to be called.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "bitcode", derive(bitcode::Encode, bitcode::Decode))]
